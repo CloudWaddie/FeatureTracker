@@ -10,7 +10,8 @@ const FileExplorer = () => {
   const [fileSystem, setFileSystem] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
   const [expandedFolders, setExpandedFolders] = useState(new Set());
-  const [diffContent, setDiffContent] = useState(''); // State to store the diff
+  const [diffContent, setDiffContent] = useState('');
+  const [supabaseFilesData, setSupabaseFilesData] = useState([]); // Store the raw data from Supabase
 
   useEffect(() => {
     const fetchFiles = async () => {
@@ -25,8 +26,10 @@ const FileExplorer = () => {
           return;
         }
         console.log('Supabase Data:', data);
+        setSupabaseFilesData(data); // Store the raw data
         const transformedFileSystem = transformSupabaseFiles(data);
         setFileSystem(transformedFileSystem);
+        console.log('Transformed File System:', transformedFileSystem);
       } catch (error) {
         console.error('An unexpected error occurred while fetching files:', error);
       }
@@ -41,11 +44,16 @@ const FileExplorer = () => {
 
     files.forEach(file => {
       const pathParts = file.name.split('/');
-      const fileName = pathParts[pathParts.length - 1]; // Get the filename with extension
-      const baseFileName = fileName.split('.')[0];
-      const isVersionFile = fileName.startsWith(`${baseFileName}-v`) && !isNaN(parseInt(fileName.split('-v')[1]?.split('.')[0]));
+      const fileName = pathParts[pathParts.length - 1];
+      let baseFileName = fileName;
+      if (fileName.includes('-v')) {
+        baseFileName = fileName.substring(0, fileName.indexOf('-v'));
+      } else if (fileName.includes('.')) {
+        baseFileName = fileName.substring(0, fileName.lastIndexOf('.'));
+      }
 
-      // Only add to the tree if it's not a version file
+      const isVersionFile = fileName.startsWith(`${baseFileName}-v`) && !isNaN(parseInt(fileName.substring(fileName.indexOf('-v') + 2)?.split('.')[0]));
+
       if (!isVersionFile) {
         let currentParent = root;
         let currentPath = '';
@@ -78,32 +86,35 @@ const FileExplorer = () => {
     setSelectedFile(selectedFileItem);
     if (selectedFileItem && selectedFileItem.type === 'file') {
       const currentFileName = selectedFileItem.name;
-      const currentFilePath = selectedFileItem.path;
-      const baseFileName = currentFileName.split('.')[0]; // Get the name without the extension
+      const currentFilePath = selectedFileItem.path; // This one is okay, it comes from the selected item in the tree
+      const baseFileName = currentFileName.split('.')[0];
+      const fileExtension = currentFileName.split('.').pop();
 
-      // Filter for files that start with the base name followed by '-v'
-      const versionFiles = fileSystem.filter(file =>
-        file.name.startsWith(`${baseFileName}-v`) && file.name !== currentFileName
+      const versionFiles = supabaseFilesData.filter(file =>
+        file.name.startsWith(`${baseFileName}-v`) && file.name !== currentFileName && file.name.endsWith(`.${fileExtension}`)
       );
 
       if (versionFiles.length > 0) {
-        // Extract version numbers and find the highest
         const versions = versionFiles.map(file => {
           const parts = file.name.split('-v');
           if (parts.length > 1) {
-            const versionPart = parts[1].split('.')[0]; // Get the number before the extension
+            const versionPart = parts[1].split('.')[0];
             return parseInt(versionPart);
           }
-          return 0; // Or some default if parsing fails
-        }).filter(version => !isNaN(version)); // Filter out any non-numbers
+          return 0;
+        }).filter(version => !isNaN(version));
 
         if (versions.length > 0) {
           const latestVersion = Math.max(...versions);
-          const oldFileName = `${baseFileName}-v${latestVersion}.${currentFileName.split('.')[1]}`;
-          const oldFilePath = selectedFileItem.path.replace(currentFileName, oldFileName);
+          const oldFileName = `${baseFileName}-v${latestVersion}.${fileExtension}`;
+          const oldFileObject = supabaseFilesData.find(file => file.name === oldFileName && file.name.startsWith(currentFilePath.substring(0, currentFilePath.lastIndexOf('/')))); // Changed to file.name
 
-          const diff = await compareSupabaseFiles('gemini-files', oldFilePath, currentFilePath);
-          setDiffContent(diff || 'Could not load diff or old version not found.');
+          if (oldFileObject) {
+            const diff = await compareSupabaseFiles('gemini-files', oldFileObject.name, currentFilePath); // Changed to oldFileObject.name
+            setDiffContent(diff || 'Could not load diff or old version not found.');
+          } else {
+            setDiffContent(`Old version "${oldFileName}" not found.`);
+          }
         } else {
           setDiffContent('No previous versions found.');
         }
@@ -111,9 +122,9 @@ const FileExplorer = () => {
         setDiffContent('No previous versions found.');
       }
     } else {
-      setDiffContent(''); // Clear diff if a folder is selected
+      setDiffContent('');
     }
-  }, [compareSupabaseFiles, fileSystem]); // Make sure fileSystem is in the dependencies
+  }, [compareSupabaseFiles, supabaseFilesData]);
 
   const handleToggleFolder = useCallback((folderId) => {
     setExpandedFolders((prev) => {
