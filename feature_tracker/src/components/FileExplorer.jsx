@@ -3,17 +3,16 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import FileTree from './FileTree';
 import DiffViewer from './DiffViewer';
-import { supabase } from '@/lib/supabaseClient'; // Import Supabase client
-// import { initialFileSystem, generateDiff } from '@/lib/data'; // Remove these imports
-import { compareSupabaseFiles } from '@/lib/data'; // Import the function for diffing
+import { supabase } from '@/lib/supabaseClient';
+import { compareSupabaseFiles } from '@/lib/data';
 
 const FileExplorer = () => {
-  const [fileSystem, setFileSystem] = useState([]); // State to hold the file system from Supabase
+  const [fileSystem, setFileSystem] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
-  const [expandedFolders, setExpandedFolders] = useState(new Set()); // Initialize as an empty Set
+  const [expandedFolders, setExpandedFolders] = useState(new Set());
+  const [diffContent, setDiffContent] = useState(''); // State to store the diff
 
   useEffect(() => {
-    // Function to fetch files from Supabase bucket
     const fetchFiles = async () => {
       try {
         const { data, error } = await supabase
@@ -23,12 +22,10 @@ const FileExplorer = () => {
 
         if (error) {
           console.error('Error fetching files from Supabase:', error);
-          console.error('Supabase Error Details:', error); // Add this line!
           return;
         }
-        console.log('Supabase Data:', data); // Add this line
+        console.log('Supabase Data:', data);
         const transformedFileSystem = transformSupabaseFiles(data);
-
         setFileSystem(transformedFileSystem);
       } catch (error) {
         console.error('An unexpected error occurred while fetching files:', error);
@@ -38,45 +35,85 @@ const FileExplorer = () => {
     fetchFiles();
   }, []);
 
-  // Helper function to transform the flat Supabase list into a hierarchical structure
   const transformSupabaseFiles = (files) => {
     const root = { id: 'root', name: 'root', type: 'folder', children: [] };
     const lookup = { root };
 
     files.forEach(file => {
       const pathParts = file.name.split('/');
-      let currentParent = root;
-      let currentPath = '';
+      const fileName = pathParts[pathParts.length - 1]; // Get the filename with extension
+      const baseFileName = fileName.split('.')[0];
+      const isVersionFile = fileName.startsWith(`${baseFileName}-v`) && !isNaN(parseInt(fileName.split('-v')[1]?.split('.')[0]));
 
-      pathParts.forEach((part, index) => {
-        const isFolder = index < pathParts.length - 1;
-        currentPath += (currentPath ? '/' : '') + part;
-        const id = currentPath;
+      // Only add to the tree if it's not a version file
+      if (!isVersionFile) {
+        let currentParent = root;
+        let currentPath = '';
 
-        if (!lookup[id]) {
-          const newItem = {
-            id: id,
-            name: part,
-            type: isFolder ? 'folder' : 'file',
-            children: isFolder ? [] : null, // Files don't have children
-            path: currentPath, // Store the full path for fetching content
-          };
-          lookup[id] = newItem;
-          currentParent.children.push(newItem);
-        }
-        currentParent = lookup[id];
-      });
+        pathParts.forEach((part, index) => {
+          const isFolder = index < pathParts.length - 1;
+          currentPath += (currentPath ? '/' : '') + part;
+          const id = currentPath;
+
+          if (!lookup[id]) {
+            const newItem = {
+              id: id,
+              name: part,
+              type: isFolder ? 'folder' : 'file',
+              children: isFolder ? [] : null,
+              path: currentPath,
+            };
+            lookup[id] = newItem;
+            currentParent.children.push(newItem);
+          }
+          currentParent = lookup[id];
+        });
+      }
     });
 
-    return root.children; // Return only the children of the root
+    return root.children;
   };
 
-  const handleFileSelect = useCallback((file) => {
-    setSelectedFile(file);
-    // In the future, here you would trigger compareSupabaseFiles
-    // with the old and new versions of the selected file.
-    // For now, we'll just store the selected file info.
-  }, []);
+  const handleFileSelect = useCallback(async (selectedFileItem) => {
+    setSelectedFile(selectedFileItem);
+    if (selectedFileItem && selectedFileItem.type === 'file') {
+      const currentFileName = selectedFileItem.name;
+      const currentFilePath = selectedFileItem.path;
+      const baseFileName = currentFileName.split('.')[0]; // Get the name without the extension
+
+      // Filter for files that start with the base name followed by '-v'
+      const versionFiles = fileSystem.filter(file =>
+        file.name.startsWith(`${baseFileName}-v`) && file.name !== currentFileName
+      );
+
+      if (versionFiles.length > 0) {
+        // Extract version numbers and find the highest
+        const versions = versionFiles.map(file => {
+          const parts = file.name.split('-v');
+          if (parts.length > 1) {
+            const versionPart = parts[1].split('.')[0]; // Get the number before the extension
+            return parseInt(versionPart);
+          }
+          return 0; // Or some default if parsing fails
+        }).filter(version => !isNaN(version)); // Filter out any non-numbers
+
+        if (versions.length > 0) {
+          const latestVersion = Math.max(...versions);
+          const oldFileName = `${baseFileName}-v${latestVersion}.${currentFileName.split('.')[1]}`;
+          const oldFilePath = selectedFileItem.path.replace(currentFileName, oldFileName);
+
+          const diff = await compareSupabaseFiles('gemini-files', oldFilePath, currentFilePath);
+          setDiffContent(diff || 'Could not load diff or old version not found.');
+        } else {
+          setDiffContent('No previous versions found.');
+        }
+      } else {
+        setDiffContent('No previous versions found.');
+      }
+    } else {
+      setDiffContent(''); // Clear diff if a folder is selected
+    }
+  }, [compareSupabaseFiles, fileSystem]); // Make sure fileSystem is in the dependencies
 
   const handleToggleFolder = useCallback((folderId) => {
     setExpandedFolders((prev) => {
@@ -91,12 +128,8 @@ const FileExplorer = () => {
   }, []);
 
   const currentDiff = useMemo(() => {
-    if (!selectedFile) return '';
-
-    // For now, let's just display the path of the selected file as a placeholder
-    // You'll replace this with the actual diff content fetched from Supabase
-    return `Selected File Path: ${selectedFile?.path || ''}`;
-  }, [selectedFile]);
+    return diffContent;
+  }, [diffContent]);
 
   return (
     <div className="flex h-screen bg-gray-950 text-gray-300">
