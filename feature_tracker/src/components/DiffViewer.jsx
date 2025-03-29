@@ -1,9 +1,9 @@
 // components/DiffViewer.jsx
 import React, { useEffect } from 'react';
 
-const DiffViewer = ({ fileName, diffContent }) => {
+const DiffViewer = ({ fileName, diffContent, versions = [], onVersionChange, selectedVersion, secondSelectedVersion }) => {
   // Check if we actually have content to avoid errors
-  const lines = diffContent && typeof diffContent === 'string' 
+  const lines = diffContent && typeof diffContent === 'string'
     ? diffContent.split('\n') 
     : ['No diff content available'];
 
@@ -22,9 +22,51 @@ const DiffViewer = ({ fileName, diffContent }) => {
   return (
     // Force full width and height with absolute sizing strategy
     <div className="w-full h-full min-h-full flex flex-col bg-gray-950 font-mono text-sm" style={{ minWidth: '100%' }}>
-      {/* Refined header: padding, border, text */}
-      <div className="sticky top-0 bg-gray-900 px-4 sm:px-6 py-3 border-b border-gray-800 text-gray-300 z-10 flex-shrink-0 w-full">
-        {fileName || 'File Comparison'}
+      {/* Header with file name and version dropdowns */}
+      <div className="sticky top-0 bg-gray-900 px-4 sm:px-6 py-3 border-b border-gray-800 text-gray-300 z-10 flex-shrink-0 w-full flex justify-between items-center">
+        <div>{fileName || 'File Comparison'}</div>
+        
+        {versions.length > 1 && (
+          <div className="flex items-center space-x-4">
+            {/* First dropdown - Compare */}
+            <div className="flex items-center">
+              <label htmlFor="compare-select" className="mr-2 text-xs text-gray-400">
+                Compare:
+              </label>
+              <select 
+                id="compare-select"
+                className="bg-gray-800 border border-gray-700 text-gray-300 text-sm rounded py-1 px-2 focus:ring-blue-500 focus:border-blue-500"
+                value={selectedVersion || ''}
+                onChange={(e) => onVersionChange('first', e.target.value)}
+              >
+                {versions.map((version) => (
+                  <option key={version.id} value={version.id}>
+                    {version.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            {/* Second dropdown - With */}
+            <div className="flex items-center">
+              <label htmlFor="with-select" className="mr-2 text-xs text-gray-400">
+                With:
+              </label>
+              <select 
+                id="with-select"
+                className="bg-gray-800 border border-gray-700 text-gray-300 text-sm rounded py-1 px-2 focus:ring-blue-500 focus:border-blue-500"
+                value={secondSelectedVersion || ''}
+                onChange={(e) => onVersionChange('second', e.target.value)}
+              >
+                {versions.map((version) => (
+                  <option key={version.id} value={version.id}>
+                    {version.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
       </div>
       
       {/* Add a warning if no diff markers were found */}

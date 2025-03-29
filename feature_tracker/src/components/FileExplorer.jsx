@@ -12,7 +12,35 @@ const FileExplorer = () => {
   const [expandedFolders, setExpandedFolders] = useState(new Set());
   const [diffContent, setDiffContent] = useState('');
   const [supabaseFilesData, setSupabaseFilesData] = useState([]); // Store the raw data from Supabase
+  const [availableVersions, setAvailableVersions] = useState([]); // Available versions for comparison
+  const [selectedVersionId, setSelectedVersionId] = useState(null); // First selected version for comparison
+  const [secondSelectedVersionId, setSecondSelectedVersionId] = useState(null); // Second selected version for comparison
   const supabase = useSupabase();
+
+  // Format date from version number (YYYYMMDD format)
+  const formatVersionDate = (versionNumber) => {
+    if (!versionNumber) return 'Unknown';
+    
+    const versionStr = versionNumber.toString();
+    // Check if we have at least 8 digits for YYYYMMDD
+    if (versionStr.length >= 8) {
+      const year = versionStr.substring(0, 4);
+      const month = versionStr.substring(4, 6);
+      const day = versionStr.substring(6, 8);
+      
+      // Create date object
+      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      
+      // Format date
+      return date.toLocaleDateString(undefined, { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+      });
+    }
+    
+    return versionStr; // Return as is if can't parse
+  };
 
   const fetchFiles = useCallback(async () => {
     try {
@@ -162,6 +190,10 @@ const FileExplorer = () => {
 
   const handleFileSelect = useCallback(async (selectedFileItem) => {
     setSelectedFile(selectedFileItem);
+    setAvailableVersions([]); // Reset versions when selecting a new file
+    setSelectedVersionId(null);
+    setSecondSelectedVersionId(null);
+    
     if (selectedFileItem && selectedFileItem.type === 'file') {
       // Get the actual file path from the fileData if it exists, otherwise use the path property
       const currentFilePath = selectedFileItem.fileData?.name || selectedFileItem.path;
@@ -245,12 +277,33 @@ const FileExplorer = () => {
             version: v.version
           })));
           
-          // Get the index of the current version (might be -1 if not found, which is handled below)
+          // Prepare version options for dropdown
+          const versionOptions = allVersions.map((v, index) => {
+            let label;
+            if (index === 0) {
+              // Latest version
+              label = `Latest (${formatVersionDate(v.version)})`;
+            } else {
+              // Older versions with date
+              label = formatVersionDate(v.version);
+            }
+            
+            return {
+              id: v.path,
+              version: v.version,
+              label,
+              path: v.path
+            };
+          });
+          
+          setAvailableVersions(versionOptions);
+          
+          // Get the index of the current version
           const currentIndex = allVersions.findIndex(v => 
             v.path === currentFilePath || v.version === versionNumber
           );
-          console.log('Current file index in version list:', currentIndex, 'Current path:', currentFilePath);
           
+          // Default comparison is with the previous version
           if (currentIndex === 0 && allVersions.length > 1) {
             // We're the newest version, compare with the second newest
             const previousVersion = allVersions[1];
@@ -263,6 +316,8 @@ const FileExplorer = () => {
             );
             
             setDiffContent(diff || `No differences found between current version and v${previousVersion.version}`);
+            setSelectedVersionId(currentFilePath); // Set current file as first dropdown
+            setSecondSelectedVersionId(previousVersion.path); // Set previous version as second dropdown
           } else if (currentIndex > 0) {
             // We're not the newest, compare with the next newer version
             const newerVersion = allVersions[currentIndex - 1];
@@ -275,6 +330,8 @@ const FileExplorer = () => {
             );
             
             setDiffContent(diff || `No differences found between current version and v${newerVersion.version}`);
+            setSelectedVersionId(currentFilePath);
+            setSecondSelectedVersionId(newerVersion.path);
           } else {
             // We couldn't find our version in the list, fall back to comparing with newest
             console.log('Current version not found in list, falling back to newest vs. second newest');
@@ -287,6 +344,8 @@ const FileExplorer = () => {
             );
             
             setDiffContent(diff || `Comparing latest version (v${newest.version}) with previous (v${secondNewest.version})`);
+            setSelectedVersionId(newest.path);
+            setSecondSelectedVersionId(secondNewest.path);
           }
         } else {
           setDiffContent('Need at least two versions to compare. This appears to be the only version.');
@@ -328,6 +387,27 @@ const FileExplorer = () => {
         if (versionedFiles.length > 0) {
           // Find the newest version
           versionedFiles.sort((a, b) => b.version - a.version);
+          
+          // Prepare version options for dropdown - all versioned files
+          const versionOptions = versionedFiles.map((v, index) => {
+            let label;
+            if (index === 0) {
+              // Latest version
+              label = `Latest (${formatVersionDate(v.version)})`;
+            } else {
+              // Older versions with date
+              label = formatVersionDate(v.version);
+            }
+            
+            return {
+              id: v.path,
+              version: v.version,
+              label,
+              path: v.path
+            };
+          });
+          
+          setAvailableVersions(versionOptions);
           const newestVersion = versionedFiles[0];
           
           console.log('Using newest version for comparison:', newestVersion.path);
@@ -340,6 +420,8 @@ const FileExplorer = () => {
           );
           
           setDiffContent(diff || `Comparing base file with v${newestVersion.version}`);
+          setSelectedVersionId(currentFilePath);
+          setSecondSelectedVersionId(newestVersion.path);
         } else {
           setDiffContent('This is the only version of the file. No comparison available.');
         }
@@ -348,6 +430,44 @@ const FileExplorer = () => {
       setDiffContent('');
     }
   }, [supabaseFilesData, compareSupabaseFiles]);
+
+  // Handle version selection from dropdown - updated for two dropdowns
+  const handleVersionChange = useCallback(async (dropdown, versionId) => {
+    console.log(`Selected version for ${dropdown} dropdown:`, versionId);
+    
+    // Update the appropriate state based on which dropdown changed
+    if (dropdown === 'first') {
+      setSelectedVersionId(versionId);
+    } else if (dropdown === 'second') {
+      setSecondSelectedVersionId(versionId);
+    }
+    
+    // Only proceed if we have both versions selected
+    if (selectedFile && versionId) {
+      const firstVersionId = dropdown === 'first' ? versionId : selectedVersionId;
+      const secondVersionId = dropdown === 'second' ? versionId : secondSelectedVersionId;
+      
+      // Make sure both versions are selected
+      if (firstVersionId && secondVersionId) {
+        // Find the version details
+        const firstVersion = availableVersions.find(v => v.id === firstVersionId);
+        const secondVersion = availableVersions.find(v => v.id === secondVersionId);
+        
+        if (firstVersion && secondVersion) {
+          console.log(`Comparing ${firstVersion.label} with ${secondVersion.label}`);
+          
+          // Compare the two selected versions
+          const diff = await compareSupabaseFiles(
+            'gemini-files',
+            firstVersionId,
+            secondVersionId
+          );
+          
+          setDiffContent(diff || `Comparing ${firstVersion.label} with ${secondVersion.label}`);
+        }
+      }
+    }
+  }, [selectedFile, selectedVersionId, secondSelectedVersionId, availableVersions, compareSupabaseFiles]);
 
   const handleToggleFolder = useCallback((folderId) => {
     setExpandedFolders((prev) => {
@@ -409,20 +529,17 @@ const FileExplorer = () => {
       <div className="w-64 md:w-72 lg:w-80 bg-gray-900 border-r border-gray-800 overflow-y-auto flex-shrink-0 flex flex-col font-sans">
         <div className="px-4 pt-4 pb-2 flex-shrink-0">
           <h2 className="text-xs font-medium text-gray-500 uppercase tracking-wide select-none">
-              Files
-            </h2>
-            <input
-              type="file"
-              id="uploadFile"
-              className="hidden"
-              onChange={handleFileUpload}
-            />
-            <label htmlFor="uploadFile" className="inline-flex items-center px-4 py-2 border border-gray-700 text-gray-400 rounded-md text-xs font-medium focus:outline-none focus:border-blue-500 focus:ring focus:ring-blue-300 bg-gray-800 hover:bg-gray-700 cursor-pointer">
-              Upload File
-            </label>
-          <h2 className="text-xs font-medium text-gray-500 uppercase tracking-wide select-none">
             Files
           </h2>
+          <input
+            type="file"
+            id="uploadFile"
+            className="hidden"
+            onChange={handleFileUpload}
+          />
+          <label htmlFor="uploadFile" className="inline-flex items-center px-4 py-2 border border-gray-700 text-gray-400 rounded-md text-xs font-medium focus:outline-none focus:border-blue-500 focus:ring focus:ring-blue-300 bg-gray-800 hover:bg-gray-700 cursor-pointer mt-2">
+            Upload File
+          </label>
         </div>
         <div className="flex-1 overflow-y-auto px-2 pb-4">
           <FileTree
@@ -454,6 +571,10 @@ const FileExplorer = () => {
                 key={selectedFile.id}
                 diffContent={currentDiff || 'Loading comparison...'}
                 fileName={selectedFile.displayName || selectedFile.name}
+                versions={availableVersions}
+                selectedVersion={selectedVersionId}
+                secondSelectedVersion={secondSelectedVersionId}
+                onVersionChange={handleVersionChange}
               />
             </div>
           </>
