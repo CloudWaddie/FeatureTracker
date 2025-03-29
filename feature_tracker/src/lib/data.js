@@ -1,9 +1,11 @@
 // lib/data.js
-import { supabase } from './supabaseClient';
+import { getSupabaseClient } from './supabaseClient';
 import { generateDiff } from './diffhelper';
 
 // Helper function to fetch file content from Supabase
 async function fetchFileContent(bucketName, filePath) {
+  const supabase = getSupabaseClient(); // Get authenticated client
+  
   try {
     const { data, error } = await supabase.storage.from(bucketName).download(filePath);
 
