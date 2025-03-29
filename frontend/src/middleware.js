@@ -14,7 +14,7 @@ export async function middleware(req) {
     const res = NextResponse.next();
     
     // Debug cookies present in the request
-    const cookiesList = Array.from(req.cookies.entries())
+    const cookiesList = Object.entries(req.cookies || {})
       .map(([name, value]) => `${name}: ${value.length > 20 ? value.substring(0, 20) + '...' : value}`);
     console.log('Request cookies:', cookiesList.length ? cookiesList : 'None');
     
@@ -36,7 +36,6 @@ export async function middleware(req) {
     
     // Public routes that don't require authentication
     const publicRoutes = [
-      '/',  // Allow homepage without login
       '/auth/signin', 
       '/auth/signup', 
       '/auth/reset-password', 
