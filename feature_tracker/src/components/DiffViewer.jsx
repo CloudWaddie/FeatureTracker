@@ -20,21 +20,22 @@ const DiffViewer = ({ fileName, diffContent }) => {
   const hasDiffMarkers = diffContent && (diffContent.includes('+') || diffContent.includes('-'));
   
   return (
-    // Ensure the component takes full width of its container
-    <div className="w-full h-full overflow-auto bg-gray-950 font-mono text-sm">
+    // Force full width and height with absolute sizing strategy
+    <div className="w-full h-full min-h-full flex flex-col bg-gray-950 font-mono text-sm" style={{ minWidth: '100%' }}>
       {/* Refined header: padding, border, text */}
-      <div className="sticky top-0 bg-gray-900 px-4 sm:px-6 py-3 border-b border-gray-800 text-gray-300 z-10">
+      <div className="sticky top-0 bg-gray-900 px-4 sm:px-6 py-3 border-b border-gray-800 text-gray-300 z-10 flex-shrink-0 w-full">
         {fileName || 'File Comparison'}
       </div>
       
       {/* Add a warning if no diff markers were found */}
       {diffContent && !hasDiffMarkers && (
-        <div className="bg-yellow-800/20 p-2 border-l-4 border-yellow-600 text-yellow-200 mb-2">
+        <div className="bg-yellow-800/20 p-2 border-l-4 border-yellow-600 text-yellow-200 mb-2 flex-shrink-0 w-full">
           No differences found or invalid diff format.
         </div>
       )}
       
-      <pre className="p-4 whitespace-pre-wrap break-all">
+      {/* Make pre element take the full width and height, even with minimal content */}
+      <pre className="p-4 whitespace-pre-wrap break-all flex-1 min-h-[calc(100%-60px)] overflow-y-auto w-full" style={{ minWidth: '100%' }}>
         {lines.map((line, index) => {
           let lineType = 'unchanged';
           let displayLine = line;
@@ -74,8 +75,8 @@ const DiffViewer = ({ fileName, diffContent }) => {
           const currentStyle = styles[lineType];
 
           return (
-            // Apply background color to the whole line container
-            <div key={index} className={`flex items-start ${currentStyle.bgColor} hover:bg-gray-700/50`}> {/* Add subtle hover */}
+            // Apply background color to the whole line container and make it full width
+            <div key={index} className={`flex items-start ${currentStyle.bgColor} hover:bg-gray-700/50 w-full`}>
               {/* Line number column - more padding, consistent width */}
               <span className="w-10 sm:w-12 px-2 text-right text-gray-600 select-none flex-shrink-0">
                 {/* Show line numbers logically (could be improved for complex diffs) */}
@@ -85,8 +86,8 @@ const DiffViewer = ({ fileName, diffContent }) => {
               <span className={`px-2 ${currentStyle.prefixColor} select-none flex-shrink-0`}>
                 {currentStyle.prefix}
               </span>
-              {/* Code content - allow wrapping within the line */}
-              <span className={`flex-1 ${currentStyle.textColor} whitespace-pre-wrap break-words pr-4`}>
+              {/* Code content - force it to take all remaining space */}
+              <span className={`flex-1 ${currentStyle.textColor} whitespace-pre-wrap break-words pr-4`} style={{ minWidth: "calc(100% - 80px)" }}>
                 {displayLine || ' '} {/* Render a space for empty lines to maintain height */}
               </span>
             </div>

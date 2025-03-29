@@ -6,7 +6,7 @@ import FileExplorer from '../components/FileExplorer';
 
 export default function Home() {
   return (
-    <div className="flex h-screen w-full overflow-hidden">
+    <div className="h-screen w-full overflow-hidden">
       <FileExplorer />
     </div>
   );

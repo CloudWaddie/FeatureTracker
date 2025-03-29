@@ -448,8 +448,8 @@ const FileExplorer = () => {
               {/* Add more inactive tabs here if implementing multi-tab */}
             </div>
 
-            {/* Diff Viewer Area - Make sure it takes full width and gets diffContent */}
-            <div className="flex-1 w-full overflow-auto">
+            {/* Diff Viewer Area - Make it fill ALL available space horizontally */}
+            <div className="flex-1 w-full flex flex-col min-h-0">
               <DiffViewer
                 key={selectedFile.id}
                 diffContent={currentDiff || 'Loading comparison...'}
