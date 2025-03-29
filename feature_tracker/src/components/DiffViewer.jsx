@@ -35,12 +35,21 @@ const DiffViewer = ({ fileName, diffContent, versions = [], onVersionChange, sel
               </label>
               <select 
                 id="compare-select"
-                className="bg-gray-800 border border-gray-700 text-gray-300 text-sm rounded py-1 px-2 focus:ring-blue-500 focus:border-blue-500"
+                className="bg-gray-800 border border-gray-700 text-gray-300 text-sm rounded py-1 px-2 focus:ring-blue-500 focus:border-blue-500 font-sans appearance-none cursor-pointer hover:bg-gray-750"
                 value={selectedVersion || ''}
                 onChange={(e) => onVersionChange('first', e.target.value)}
+                style={{
+                  WebkitAppearance: "none",
+                  MozAppearance: "none",
+                  backgroundImage: "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgb(156, 163, 175)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")",
+                  backgroundRepeat: "no-repeat",
+                  backgroundPosition: "right 0.5rem center",
+                  backgroundSize: "1.5em 1.5em",
+                  paddingRight: "2.5rem"
+                }}
               >
                 {versions.map((version) => (
-                  <option key={version.id} value={version.id}>
+                  <option key={version.id} value={version.id} className="text-gray-300 bg-gray-800 font-sans">
                     {version.label}
                   </option>
                 ))}
@@ -54,12 +63,21 @@ const DiffViewer = ({ fileName, diffContent, versions = [], onVersionChange, sel
               </label>
               <select 
                 id="with-select"
-                className="bg-gray-800 border border-gray-700 text-gray-300 text-sm rounded py-1 px-2 focus:ring-blue-500 focus:border-blue-500"
+                className="bg-gray-800 border border-gray-700 text-gray-300 text-sm rounded py-1 px-2 focus:ring-blue-500 focus:border-blue-500 font-sans appearance-none cursor-pointer hover:bg-gray-750"
                 value={secondSelectedVersion || ''}
                 onChange={(e) => onVersionChange('second', e.target.value)}
+                style={{
+                  WebkitAppearance: "none",
+                  MozAppearance: "none",
+                  backgroundImage: "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgb(156, 163, 175)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")",
+                  backgroundRepeat: "no-repeat",
+                  backgroundPosition: "right 0.5rem center",
+                  backgroundSize: "1.5em 1.5em",
+                  paddingRight: "2.5rem"
+                }}
               >
                 {versions.map((version) => (
-                  <option key={version.id} value={version.id}>
+                  <option key={version.id} value={version.id} className="text-gray-300 bg-gray-800 font-sans">
                     {version.label}
                   </option>
                 ))}
