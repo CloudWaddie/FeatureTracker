@@ -6,6 +6,33 @@ import DiffViewer from './DiffViewer';
 import { useSupabase } from '../app/supabase-provider';
 import { compareSupabaseFiles } from '@/lib/data';
 
+// Utility function to extract the original filename from a URL-based filename
+function extractOriginalFilename(fullName) {
+  // Remove the trailing .txt extension if it exists
+  let processedName = fullName;
+  if (processedName.endsWith('.txt')) {
+    processedName = processedName.slice(0, -4);
+  }
+  
+  // Check if it's a versioned file (with -v timestamp pattern)
+  const versionMatch = processedName.match(/^(.+)-v(\d+)\.(.+)$/);
+  
+  if (versionMatch) {
+    // It's a versioned file
+    const [, basePath, , extension] = versionMatch;
+    
+    // Extract the actual filename from the URL path
+    // Example: https_example_com_path_file.js -> file.js
+    const pathParts = basePath.split('_');
+    // Get the last part which should be the filename
+    return pathParts[pathParts.length - 1] + '.' + extension;
+  } else {
+    // It's not a versioned file, still try to extract the real filename
+    const pathParts = processedName.split('_');
+    return pathParts[pathParts.length - 1];
+  }
+}
+
 const FileExplorer = () => {
   const [fileSystem, setFileSystem] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
@@ -99,6 +126,9 @@ const FileExplorer = () => {
         // Use the original base filename for grouping to handle future versions
         const baseFileName = `${baseName}.${extension}`;
         const fullPath = dirPath ? `${dirPath}/${baseFileName}` : baseFileName;
+        
+        // Extract the display name (just the actual filename part)
+        const displayName = extractOriginalFilename(baseFileName);
 
         if (!fileGroups[fullPath]) {
           fileGroups[fullPath] = [];
@@ -108,11 +138,14 @@ const FileExplorer = () => {
           ...file,
           versionNumber: parseInt(versionNumber),
           baseFileName: baseFileName,
-          displayName: baseFileName // Add display name without version number
+          displayName: displayName // Use cleaned display name
         });
       } else {
         // It's a base file (no version)
         const fullPath = dirPath ? `${dirPath}/${fileName}` : fileName;
+        
+        // Extract the display name for non-versioned files too
+        const displayName = extractOriginalFilename(fileName);
 
         if (!fileGroups[fullPath]) {
           fileGroups[fullPath] = [];
@@ -122,7 +155,7 @@ const FileExplorer = () => {
           ...file,
           versionNumber: 0,
           baseFileName: fileName,
-          displayName: fileName // For non-versioned files, display name is same as name
+          displayName: displayName // Use cleaned display name
         });
       }
     });
@@ -171,14 +204,14 @@ const FileExplorer = () => {
         // Create new file node with display name
         const newItem = {
           id: id,
-          name: file.displayName || filePart, // Use the display name without version
+          name: file.displayName || extractOriginalFilename(filePart), // Use clean display name
           type: 'file',
           children: null,
           path: currentPath,
           // Store both the original name with version and the display name
           fileData: file,
           originalName: filePart,
-          displayName: file.displayName
+          displayName: file.displayName || extractOriginalFilename(filePart)
         };
         lookup[id] = newItem;
         currentParent.children.push(newItem);
@@ -431,7 +464,6 @@ const FileExplorer = () => {
     }
   }, [supabaseFilesData, compareSupabaseFiles]);
 
-  // Handle version selection from dropdown - updated for two dropdowns
   const handleVersionChange = useCallback(async (dropdown, versionId) => {
     console.log(`Selected version for ${dropdown} dropdown:`, versionId);
     
@@ -497,7 +529,9 @@ const FileExplorer = () => {
       const fileNameParts = file.name.split('.');
       const baseName = fileNameParts.slice(0, -1).join('.');
       const extension = fileNameParts.pop();
-      const newFileName = `${baseName}-v${version}.${extension}`;
+      
+      // Updated filename format to preserve original extension before version and add .txt at the end
+      const newFileName = `${baseName}-v${version}.${extension}.txt`;
 
       try {
         const { data, error } = await supabase
@@ -559,7 +593,7 @@ const FileExplorer = () => {
             {/* Tab Bar Area */}
             <div className="flex border-b border-gray-800 flex-shrink-0 bg-gray-900">
               <div className="px-4 py-2 text-sm text-gray-200 bg-gray-950 border-r border-gray-800">
-                {selectedFile.displayName || selectedFile.name}
+                {selectedFile.displayName || extractOriginalFilename(selectedFile.name)}
                 {/* TODO: Add a close 'x' button later */}
               </div>
               {/* Add more inactive tabs here if implementing multi-tab */}
@@ -570,7 +604,7 @@ const FileExplorer = () => {
               <DiffViewer
                 key={selectedFile.id}
                 diffContent={currentDiff || 'Loading comparison...'}
-                fileName={selectedFile.displayName || selectedFile.name}
+                fileName={selectedFile.displayName || extractOriginalFilename(selectedFile.name)}
                 versions={availableVersions}
                 selectedVersion={selectedVersionId}
                 secondSelectedVersion={secondSelectedVersionId}

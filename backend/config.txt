@@ -1,0 +1,13 @@
+# Feature Tracker Configuration
+# List URLs to monitor, one per line
+
+# Example URLs (replace with your actual URLs)
+
+https://sunny-profiterole-9d45d9.netlify.app/updating.txt
+
+
+# Supabase configuration
+[supabase]
+url=https://mccbekclrcnckrzfdoza.supabase.co
+key=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1jY2Jla2NscmNuY2tyemZkb3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMxNDczNDAsImV4cCI6MjA1ODcyMzM0MH0.7HSl_zdjOrfcQFLFYFES-t0KGaK2zRAnt1MDP3_Dpqk
+bucket=gemini-files
