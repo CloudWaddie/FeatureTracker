@@ -1,3 +1,11 @@
 # Python dependencies for Feature Tracker
 requests>=2.28.0
 supabase>=2.0.0
+beautifulsoup4>=4.10.0
+selenium>=4.10.0
+selenium-wire>=5.1.0
+blinker==1.6.2 # Added to fix selenium-wire dependency issue
+undetected-chromedriver>=3.5.0
+webdriver-manager>=4.0.0
+pypasser>=0.0.5 # Adjusted version constraint
+Pillow>=9.0.0

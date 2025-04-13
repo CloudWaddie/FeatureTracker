@@ -1,9 +1,8 @@
 # Feature Tracker Configuration
 # List URLs to monitor, one per line
 
-# Example URLs (replace with your actual URLs)
-
-https://sunny-profiterole-9d45d9.netlify.app/updating.txt
+[dynamic_sources]
+gemini=https://gemini.google.com/app,www.gstatic.com/_/mss/
 
 
 # Supabase configuration
