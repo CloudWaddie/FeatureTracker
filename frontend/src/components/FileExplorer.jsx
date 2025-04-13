@@ -43,66 +43,86 @@ function extractOriginalFilename(supabaseFullName) {
 // Function to get language from a display filename (already processed by extractOriginalFilename)
 function getLanguageFromFileName(displayFileName) {
   if (!displayFileName) return 'plaintext';
-  const extension = displayFileName.split('.').pop()?.toLowerCase();
-  switch (extension) {
-    case 'js':
-    case 'mjs':
-    case 'cjs':
-      return 'javascript';
-    case 'jsx':
-      return 'jsx';
-    case 'ts':
-      return 'typescript';
-    case 'tsx':
-      return 'tsx';
-    case 'py':
-      return 'python';
-    case 'css':
-      return 'css';
-    case 'html':
-      return 'html';
-    case 'json':
-      return 'json';
-    case 'md':
-      return 'markdown';
-    case 'java':
-      return 'java';
-    case 'c':
-    case 'h':
-      return 'c';
-    case 'cpp':
-    case 'hpp':
-      return 'cpp';
-    case 'cs':
-      return 'csharp';
-    case 'go':
-      return 'go';
-    case 'php':
-      return 'php';
-    case 'rb':
-      return 'ruby';
-    case 'swift':
-      return 'swift';
-    case 'kt':
-      return 'kotlin';
-    case 'rs':
-      return 'rust';
-    case 'sql':
-      return 'sql';
-    case 'sh':
-    case 'bash':
-      return 'bash';
-    case 'yaml':
-    case 'yml':
-      return 'yaml';
-    case 'xml':
-      return 'xml';
-    case 'dockerfile':
-      return 'dockerfile';
-    // Add more mappings as needed
-    default:
-      return 'plaintext'; // Default to plain text
+
+  // Check for known extensionless files first
+  if (displayFileName.toLowerCase() === 'dockerfile') {
+    return 'dockerfile';
   }
+  // Add other known extensionless files here if needed
+  // if (displayFileName === 'Makefile') return 'makefile';
+
+  const parts = displayFileName.split('.');
+  // Check if there is an extension (more than one part)
+  if (parts.length > 1) {
+    const extension = parts.pop()?.toLowerCase();
+    switch (extension) {
+      case 'js':
+      case 'mjs':
+      case 'cjs':
+        return 'javascript';
+      case 'jsx':
+        return 'jsx';
+      case 'ts':
+        return 'typescript';
+      case 'tsx':
+        return 'tsx';
+      case 'py':
+        return 'python';
+      case 'css':
+        return 'css';
+      case 'html':
+        return 'html';
+      case 'json':
+        return 'json';
+      case 'md':
+        return 'markdown';
+      case 'java':
+        return 'java';
+      case 'c':
+      case 'h':
+        return 'c';
+      case 'cpp':
+      case 'hpp':
+        return 'cpp';
+      case 'cs':
+        return 'csharp';
+      case 'go':
+        return 'go';
+      case 'php':
+        return 'php';
+      case 'rb':
+        return 'ruby';
+      case 'swift':
+        return 'swift';
+      case 'kt':
+        return 'kotlin';
+      case 'rs':
+        return 'rust';
+      case 'sql':
+        return 'sql';
+      case 'sh':
+      case 'bash':
+        return 'bash';
+      case 'yaml':
+      case 'yml':
+        return 'yaml';
+      case 'xml':
+        return 'xml';
+      // Add more mappings as needed
+      default:
+        // If extension is unknown, fall through to the logic below
+        break;
+    }
+  }
+
+  // If no extension or unknown extension, assume JavaScript as per user context
+  // This is a heuristic based on the user's specific case.
+  // Consider adding more checks or configuration if other extensionless types are common.
+  console.warn(`Assuming 'javascript' for file "${displayFileName}" due to missing or unknown extension.`);
+  return 'javascript';
+
+  // Original fallback if the assumption is too broad:
+  // return 'plaintext';
 }
 
 const FileExplorer = () => {

@@ -32,77 +32,118 @@ const DiffViewer = ({
   secondSelectedVersion,
   language = 'plaintext' // Receive language prop, default to plaintext
 }) => {
-  const contextLines = 2; // Number of context lines to show around changes
+  const contextLines = 3; // Increase context slightly for better overview
 
-  const processedLines = useMemo(() => {
+  // Define allLines here so it's accessible by multiple useMemo hooks
+  const allLines = useMemo(() => {
     if (!diffContent || typeof diffContent !== 'string') {
       return [];
     }
+    const lines = diffContent.split('\n');
+    // Handle potential trailing newline causing an empty string element
+    if (lines.length > 0 && lines[lines.length - 1] === '') {
+      lines.pop();
+    }
+    return lines;
+  }, [diffContent]);
 
-    const allLines = diffContent.split('\n');
-    const linesToShow = [];
-    let lastAddedIndex = -1;
+  const processedLines = useMemo(() => {
+    // Now use the pre-calculated allLines
+    if (allLines.length === 0) {
+      return [];
+    }
 
-    allLines.forEach((line, index) => {
-      if (line.startsWith('+') || line.startsWith('-')) {
-        // Check for gap and add separator
-        if (index > lastAddedIndex + 1 && lastAddedIndex !== -1) {
-           // Avoid separator right at the beginning
-           linesToShow.push({ type: 'separator', key: `sep-${index}` });
+    // 1. Identify change indices
+    const changeIndices = allLines
+      .map((line, index) => (line.startsWith('+') || line.startsWith('-') ? index : -1))
+      .filter(index => index !== -1);
+
+    // If no changes, return empty (message handled outside)
+    if (changeIndices.length === 0) {
+        // Check if there was actual content or just empty lines
+        const hasMeaningfulContent = allLines.some(line => line.trim() !== '');
+        if (hasMeaningfulContent) {
+             // Indicate no changes were found, but let the outer component handle the message
+             return [];
+        } else {
+            // If it was just empty lines or whitespace, treat as empty diff
+            return [];
         }
+    }
 
-        // Add preceding context lines
-        const startContext = Math.max(0, index - contextLines);
-        for (let i = startContext; i < index; i++) {
-          if (i > lastAddedIndex) {
-            linesToShow.push({
-              type: 'context',
-              content: allLines[i].startsWith(' ') ? allLines[i].substring(1) : allLines[i], // Handle potential leading space from basic diff
-              originalLineNumber: i + 1,
-              key: `ctx-${i}`
-            });
-            lastAddedIndex = i;
-          }
-        }
 
-        // Add the changed line
-        const lineType = line.startsWith('+') ? 'added' : 'removed';
-        linesToShow.push({
-          type: lineType,
-          content: line.substring(1),
-          originalLineNumber: index + 1, // Or adjust based on diff format logic if needed
-          key: `${lineType}-${index}`
-        });
-        lastAddedIndex = index;
-
-        // Add succeeding context lines (look ahead slightly)
-        // Note: This simple lookahead adds context *after* each change.
-        // A more complex approach might group consecutive changes first.
-        const endContext = Math.min(allLines.length, index + 1 + contextLines);
-         for (let i = index + 1; i < endContext; i++) {
-           // Only add if it's not another change immediately following
-           if (i > lastAddedIndex && !allLines[i].startsWith('+') && !allLines[i].startsWith('-')) {
-             linesToShow.push({
-               type: 'context',
-               content: allLines[i].startsWith(' ') ? allLines[i].substring(1) : allLines[i], // Handle potential leading space
-               originalLineNumber: i + 1,
-               key: `ctx-${i}`
-             });
-             lastAddedIndex = i;
-           }
-         }
+    // 2. Determine all indices to show (changes + context)
+    const indicesToShow = new Set();
+    changeIndices.forEach(changeIndex => {
+      const start = Math.max(0, changeIndex - contextLines);
+      const end = Math.min(allLines.length - 1, changeIndex + contextLines);
+      for (let i = start; i <= end; i++) {
+        indicesToShow.add(i);
       }
     });
 
-     // Handle case where there are no changes at all
-     if (linesToShow.length === 0 && allLines.length > 0 && allLines.some(l => !l.startsWith('+') && !l.startsWith('-'))) {
-        // If no changes were found but there was content, show a message or potentially all lines as context
-        // For now, let's keep it empty and rely on the "No differences found" message logic below.
-     }
+    // 3. Build linesToShow array and add separators
+    const linesToShow = [];
+    let lastShownIndex = -1;
 
+    for (let i = 0; i < allLines.length; i++) {
+      if (indicesToShow.has(i)) {
+        // This line should be shown
+        const line = allLines[i];
+        let lineType = 'context';
+        let content = line;
+        let keyPrefix = 'ctx'; // Default key prefix
+
+        if (line.startsWith('+')) {
+          lineType = 'added';
+          content = line.substring(1);
+          keyPrefix = 'add';
+        } else if (line.startsWith('-')) {
+          lineType = 'removed';
+          content = line.substring(1);
+          keyPrefix = 'rem';
+        } else if (line.startsWith(' ')) {
+          // Some diff formats add a space for context lines
+          content = line.substring(1);
+        }
+        // else: context line without leading space
+
+        linesToShow.push({
+          type: lineType,
+          content: content,
+          originalLineNumber: i + 1, // Use original index + 1 for line number
+          key: `${keyPrefix}-${i}` // Unique key based on type prefix and original index
+        });
+        lastShownIndex = i;
+      } else {
+        // This line is hidden. Check if we need a separator.
+        // Add separator if the *previous* line was shown (lastShownIndex === i - 1)
+        // and if this isn't the very first line (i > 0)
+        // and if the last item added wasn't already a separator.
+        if (lastShownIndex === i - 1 && i > 0) {
+           if (!linesToShow.length || linesToShow[linesToShow.length - 1].type !== 'separator') {
+               // Check ahead if there are more lines to be shown later
+               let hasMoreLinesToShow = false;
+               for (let j = i + 1; j < allLines.length; j++) {
+                   if (indicesToShow.has(j)) {
+                       hasMoreLinesToShow = true;
+                       break;
+                   }
+               }
+               // Only add separator if there are more lines to show after this gap
+               if (hasMoreLinesToShow) {
+                   linesToShow.push({ type: 'separator', key: `sep-${i}` });
+               }
+           }
+        }
+        // Update lastShownIndex only when a line is shown.
+        // If a line is hidden, lastShownIndex remains the index of the last shown line.
+      }
+    }
 
     return linesToShow;
-  }, [diffContent, contextLines]);
+  // Update dependency array to include allLines
+  }, [allLines, contextLines]);
 
 
   // Add debugging to see what's happening
@@ -114,8 +155,14 @@ const DiffViewer = ({
     });
   }, [diffContent]);
 
-  const hasChanges = processedLines.some(l => l.type === 'added' || l.type === 'removed');
-  const hasOriginalContent = diffContent && typeof diffContent === 'string' && diffContent.length > 0;
+  // Add a message if no differences were found but content exists
+  // Use the pre-calculated allLines
+  const hasMeaningfulContent = useMemo(() => allLines.some(line => line.trim() !== ''), [allLines]);
+  // Update dependency array for noChangesFound
+  const noChangesFound = useMemo(() => hasMeaningfulContent && processedLines.length === 0 && !processedLines.some(l => l.type === 'added' || l.type === 'removed'), [hasMeaningfulContent, processedLines]);
+
+  const hasChanges = useMemo(() => processedLines.some(l => l.type === 'added' || l.type === 'removed'), [processedLines]);
+  const hasOriginalContent = useMemo(() => diffContent && typeof diffContent === 'string' && diffContent.length > 0, [diffContent]);
 
 
   return (
@@ -194,7 +241,7 @@ const DiffViewer = ({
       )}
 
       {/* Add a message if no differences were found */}
-      {hasOriginalContent && !hasChanges && (
+      {noChangesFound && (
          <div className="bg-green-800/20 p-4 border-l-4 border-green-600 text-green-200 m-4 flex-shrink-0 w-auto self-start">
            No differences found between the selected versions.
          </div>
