@@ -6,30 +6,102 @@ import DiffViewer from './DiffViewer';
 import { useSupabase } from '../app/supabase-provider';
 import { compareSupabaseFiles } from '@/lib/data';
 
-// Utility function to extract the original filename from a URL-based filename
-function extractOriginalFilename(fullName) {
-  // Remove the trailing .txt extension if it exists
-  let processedName = fullName;
+// Regex to identify versioned files (e.g., name-v20230101.ext or name-v2023010110.ext)
+// It captures: 1. Base name, 2. Version digits, 3. Original extension
+const VERSION_REGEX = /^(.+)-v(\d+)\.(.+)$/;
+
+// Utility function to extract the original filename from a Supabase storage filename
+function extractOriginalFilename(supabaseFullName) {
+  // 1. Remove the trailing .txt extension added during upload
+  let processedName = supabaseFullName;
   if (processedName.endsWith('.txt')) {
     processedName = processedName.slice(0, -4);
   }
-  
-  // Check if it's a versioned file (with -v timestamp pattern)
-  const versionMatch = processedName.match(/^(.+)-v(\d+)\.(.+)$/);
-  
+
+  // 2. Check if it's a versioned file using the standard pattern
+  const versionMatch = processedName.match(VERSION_REGEX);
+
   if (versionMatch) {
-    // It's a versioned file
+    // It's a versioned file (e.g., base-v123.js)
     const [, basePath, , extension] = versionMatch;
-    
-    // Extract the actual filename from the URL path
-    // Example: https_example_com_path_file.js -> file.js
+
+    // 3. Handle potential URL-like encoding in the base path (e.g., https_example_com_file)
+    // This assumes the actual filename is the last part after splitting by '_'
+    // Limitation: This might not work correctly if the original filename contained underscores.
     const pathParts = basePath.split('_');
-    // Get the last part which should be the filename
     return pathParts[pathParts.length - 1] + '.' + extension;
   } else {
-    // It's not a versioned file, still try to extract the real filename
+    // It's not a versioned file (e.g., http_example_com_file.js or just file.js)
+    // Still attempt to handle URL-like encoding.
     const pathParts = processedName.split('_');
-    return pathParts[pathParts.length - 1];
+    // If splitting by '_' gives parts, assume last part is filename, otherwise use the whole name.
+    // This handles simple names like 'file.js' correctly.
+    return pathParts.length > 1 ? pathParts[pathParts.length - 1] : processedName;
+  }
+}
+
+// Function to get language from a display filename (already processed by extractOriginalFilename)
+function getLanguageFromFileName(displayFileName) {
+  if (!displayFileName) return 'plaintext';
+  const extension = displayFileName.split('.').pop()?.toLowerCase();
+  switch (extension) {
+    case 'js':
+    case 'mjs':
+    case 'cjs':
+      return 'javascript';
+    case 'jsx':
+      return 'jsx';
+    case 'ts':
+      return 'typescript';
+    case 'tsx':
+      return 'tsx';
+    case 'py':
+      return 'python';
+    case 'css':
+      return 'css';
+    case 'html':
+      return 'html';
+    case 'json':
+      return 'json';
+    case 'md':
+      return 'markdown';
+    case 'java':
+      return 'java';
+    case 'c':
+    case 'h':
+      return 'c';
+    case 'cpp':
+    case 'hpp':
+      return 'cpp';
+    case 'cs':
+      return 'csharp';
+    case 'go':
+      return 'go';
+    case 'php':
+      return 'php';
+    case 'rb':
+      return 'ruby';
+    case 'swift':
+      return 'swift';
+    case 'kt':
+      return 'kotlin';
+    case 'rs':
+      return 'rust';
+    case 'sql':
+      return 'sql';
+    case 'sh':
+    case 'bash':
+      return 'bash';
+    case 'yaml':
+    case 'yml':
+      return 'yaml';
+    case 'xml':
+      return 'xml';
+    case 'dockerfile':
+      return 'dockerfile';
+    // Add more mappings as needed
+    default:
+      return 'plaintext'; // Default to plain text
   }
 }
 
@@ -42,6 +114,7 @@ const FileExplorer = () => {
   const [availableVersions, setAvailableVersions] = useState([]); // Available versions for comparison
   const [selectedVersionId, setSelectedVersionId] = useState(null); // First selected version for comparison
   const [secondSelectedVersionId, setSecondSelectedVersionId] = useState(null); // Second selected version for comparison
+  const [selectedFileLanguage, setSelectedFileLanguage] = useState('plaintext');
   const supabase = useSupabase();
 
   // Format date from version number (YYYYMMDD format)
@@ -118,7 +191,7 @@ const FileExplorer = () => {
       const dirPath = pathParts.slice(0, -1).join('/');
 
       // Check if it's a versioned file (name-v20230101.ext format)
-      const versionMatch = fileName.match(/^(.+)-v(\d+)\.(.+)$/);
+      const versionMatch = fileName.match(VERSION_REGEX);
 
       if (versionMatch) {
         // It's a versioned file
@@ -226,8 +299,15 @@ const FileExplorer = () => {
     setAvailableVersions([]); // Reset versions when selecting a new file
     setSelectedVersionId(null);
     setSecondSelectedVersionId(null);
-    
+    setDiffContent(''); // Clear previous diff
+    setSelectedFileLanguage('plaintext'); // Reset language
+
     if (selectedFileItem && selectedFileItem.type === 'file') {
+      // Determine language based on display name
+      const language = getLanguageFromFileName(selectedFileItem.displayName || selectedFileItem.name);
+      setSelectedFileLanguage(language);
+      console.log(`Detected language: ${language} for file: ${selectedFileItem.displayName || selectedFileItem.name}`);
+
       // Get the actual file path from the fileData if it exists, otherwise use the path property
       const currentFilePath = selectedFileItem.fileData?.name || selectedFileItem.path;
       // Use the original name with version for comparison logic, but display name for UI
@@ -241,7 +321,7 @@ const FileExplorer = () => {
       });
 
       // More robust version pattern detection with explicit regex for better debugging
-      const versionRegex = /^(.+)-v(\d+)\.(.+)$/;
+      const versionRegex = VERSION_REGEX;
       const versionMatch = currentFileName.match(versionRegex);
 
       // Check if this is a versioned file (has -v123456 in the name)
@@ -593,22 +673,25 @@ const FileExplorer = () => {
             {/* Tab Bar Area */}
             <div className="flex border-b border-gray-800 flex-shrink-0 bg-gray-900">
               <div className="px-4 py-2 text-sm text-gray-200 bg-gray-950 border-r border-gray-800">
-                {selectedFile.displayName || extractOriginalFilename(selectedFile.name)}
+                {/* Display the cleaned name in the tab */}
+                {selectedFile.displayName}
                 {/* TODO: Add a close 'x' button later */}
               </div>
               {/* Add more inactive tabs here if implementing multi-tab */}
-            </div>
+            </div> {/* This is the correct closing tag for the tab bar */}
+            {/* Removed the extra </div> that was here */}
 
             {/* Diff Viewer Area - Make it fill ALL available space horizontally */}
             <div className="flex-1 w-full flex flex-col min-h-0">
               <DiffViewer
-                key={selectedFile.id}
+                key={`${selectedFile.id}-${selectedVersionId}-${secondSelectedVersionId}`} // More specific key
                 diffContent={currentDiff || 'Loading comparison...'}
                 fileName={selectedFile.displayName || extractOriginalFilename(selectedFile.name)}
                 versions={availableVersions}
                 selectedVersion={selectedVersionId}
                 secondSelectedVersion={secondSelectedVersionId}
                 onVersionChange={handleVersionChange}
+                language={selectedFileLanguage} // Pass the detected language
               />
             </div>
           </>

@@ -1,11 +1,109 @@
 // components/DiffViewer.jsx
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+// Correct the import path for the style
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'; // Note: If this path still fails, try 'react-syntax-highlighter/dist/cjs/styles/prism/vsc-dark-plus' or check your installed version's structure.
 
-const DiffViewer = ({ fileName, diffContent, versions = [], onVersionChange, selectedVersion, secondSelectedVersion }) => {
-  // Check if we actually have content to avoid errors
-  const lines = diffContent && typeof diffContent === 'string'
-    ? diffContent.split('\n') 
-    : ['No diff content available'];
+// Customize the style slightly for better integration
+const customStyle = {
+  ...vscDarkPlus,
+  // Ensure the background is transparent to show the underlying diff color
+  'code[class*="language-"]': {
+    ...vscDarkPlus['code[class*="language-"]'],
+    backgroundColor: 'transparent',
+    color: 'inherit', // Inherit color initially, syntax highlighting will override where needed
+    textShadow: 'none', // Remove default text shadow if any
+  },
+  'pre[class*="language-"]': {
+    ...vscDarkPlus['pre[class*="language-"]'],
+    backgroundColor: 'transparent',
+    padding: '0', // Remove default padding from pre tag
+    margin: '0', // Remove default margin
+    overflow: 'visible', // Prevent scrollbars within the line
+  }
+};
+
+const DiffViewer = ({
+  fileName,
+  diffContent,
+  versions = [],
+  onVersionChange,
+  selectedVersion,
+  secondSelectedVersion,
+  language = 'plaintext' // Receive language prop, default to plaintext
+}) => {
+  const contextLines = 2; // Number of context lines to show around changes
+
+  const processedLines = useMemo(() => {
+    if (!diffContent || typeof diffContent !== 'string') {
+      return [];
+    }
+
+    const allLines = diffContent.split('\n');
+    const linesToShow = [];
+    let lastAddedIndex = -1;
+
+    allLines.forEach((line, index) => {
+      if (line.startsWith('+') || line.startsWith('-')) {
+        // Check for gap and add separator
+        if (index > lastAddedIndex + 1 && lastAddedIndex !== -1) {
+           // Avoid separator right at the beginning
+           linesToShow.push({ type: 'separator', key: `sep-${index}` });
+        }
+
+        // Add preceding context lines
+        const startContext = Math.max(0, index - contextLines);
+        for (let i = startContext; i < index; i++) {
+          if (i > lastAddedIndex) {
+            linesToShow.push({
+              type: 'context',
+              content: allLines[i].startsWith(' ') ? allLines[i].substring(1) : allLines[i], // Handle potential leading space from basic diff
+              originalLineNumber: i + 1,
+              key: `ctx-${i}`
+            });
+            lastAddedIndex = i;
+          }
+        }
+
+        // Add the changed line
+        const lineType = line.startsWith('+') ? 'added' : 'removed';
+        linesToShow.push({
+          type: lineType,
+          content: line.substring(1),
+          originalLineNumber: index + 1, // Or adjust based on diff format logic if needed
+          key: `${lineType}-${index}`
+        });
+        lastAddedIndex = index;
+
+        // Add succeeding context lines (look ahead slightly)
+        // Note: This simple lookahead adds context *after* each change.
+        // A more complex approach might group consecutive changes first.
+        const endContext = Math.min(allLines.length, index + 1 + contextLines);
+         for (let i = index + 1; i < endContext; i++) {
+           // Only add if it's not another change immediately following
+           if (i > lastAddedIndex && !allLines[i].startsWith('+') && !allLines[i].startsWith('-')) {
+             linesToShow.push({
+               type: 'context',
+               content: allLines[i].startsWith(' ') ? allLines[i].substring(1) : allLines[i], // Handle potential leading space
+               originalLineNumber: i + 1,
+               key: `ctx-${i}`
+             });
+             lastAddedIndex = i;
+           }
+         }
+      }
+    });
+
+     // Handle case where there are no changes at all
+     if (linesToShow.length === 0 && allLines.length > 0 && allLines.some(l => !l.startsWith('+') && !l.startsWith('-'))) {
+        // If no changes were found but there was content, show a message or potentially all lines as context
+        // For now, let's keep it empty and rely on the "No differences found" message logic below.
+     }
+
+
+    return linesToShow;
+  }, [diffContent, contextLines]);
+
 
   // Add debugging to see what's happening
   useEffect(() => {
@@ -15,10 +113,11 @@ const DiffViewer = ({ fileName, diffContent, versions = [], onVersionChange, sel
       content: diffContent?.substring(0, 100) || 'empty'
     });
   }, [diffContent]);
-  
-  // If no diff markers are found, add a note
-  const hasDiffMarkers = diffContent && (diffContent.includes('+') || diffContent.includes('-'));
-  
+
+  const hasChanges = processedLines.some(l => l.type === 'added' || l.type === 'removed');
+  const hasOriginalContent = diffContent && typeof diffContent === 'string' && diffContent.length > 0;
+
+
   return (
     // Force full width and height with absolute sizing strategy
     <div className="w-full h-full min-h-full flex flex-col bg-gray-950 font-mono text-sm" style={{ minWidth: '100%' }}>
@@ -87,73 +186,93 @@ const DiffViewer = ({ fileName, diffContent, versions = [], onVersionChange, sel
         )}
       </div>
       
-      {/* Add a warning if no diff markers were found */}
-      {diffContent && !hasDiffMarkers && (
+      {/* Add a warning if the original diff had no markers */}
+      {diffContent && !hasChanges && (
         <div className="bg-yellow-800/20 p-2 border-l-4 border-yellow-600 text-yellow-200 mb-2 flex-shrink-0 w-full">
-          No differences found or invalid diff format.
+          Invalid diff format or identical files selected.
         </div>
       )}
-      
-      {/* Make pre element take the full width and height, even with minimal content */}
-      <pre className="p-4 whitespace-pre-wrap break-all flex-1 min-h-[calc(100%-60px)] overflow-y-auto w-full" style={{ minWidth: '100%' }}>
-        {lines.map((line, index) => {
-          let lineType = 'unchanged';
-          let displayLine = line;
-          if (line.startsWith('+')) {
-            lineType = 'added';
-            displayLine = line.substring(1); // Remove '+'
-          } else if (line.startsWith('-')) {
-            lineType = 'removed';
-            displayLine = line.substring(1); // Remove '-'
-          } else {
-            // Keep the space for alignment if line starts with ' ' (from basic diff)
-            displayLine = line.startsWith(' ') ? line.substring(1) : line;
-          }
 
-          // Define styles based on line type
-          const styles = {
-            added: {
-              bgColor: 'bg-green-600 bg-opacity-10', // Softer green background
-              textColor: 'text-green-400',
-              prefix: '+',
-              prefixColor: 'text-green-500',
-            },
-            removed: {
-              bgColor: 'bg-red-600 bg-opacity-10', // Softer red background
-              textColor: 'text-red-400',
-              prefix: '-',
-              prefixColor: 'text-red-500',
-            },
-            unchanged: {
-              bgColor: '',
-              textColor: 'text-gray-400', // Slightly dimmer unchanged text
-              prefix: ' ',
-              prefixColor: 'text-gray-600', // Dim prefix for unchanged
-            },
-          };
+      {/* Add a message if no differences were found */}
+      {hasOriginalContent && !hasChanges && (
+         <div className="bg-green-800/20 p-4 border-l-4 border-green-600 text-green-200 m-4 flex-shrink-0 w-auto self-start">
+           No differences found between the selected versions.
+         </div>
+      )}
 
-          const currentStyle = styles[lineType];
+      {/* Render the processed lines */}
+      {processedLines.length > 0 && (
+        <div className="flex-1 min-h-[calc(100%-60px)] overflow-y-auto w-full" style={{ minWidth: '100%' }}> {/* Removed padding here, add per line */}
+          {processedLines.map((line) => {
+            if (line.type === 'separator') {
+              return (
+                // Corrected: spans are now inside the div
+                <div key={line.key} className="flex items-center bg-gray-800 h-6 px-4 w-full">
+                  <span className="w-10 text-right text-gray-600 select-none flex-shrink-0 mr-2">...</span>
+                  <span className="text-gray-600 select-none">...</span>
+                </div>
+              );
+            }
 
-          return (
-            // Apply background color to the whole line container and make it full width
-            <div key={index} className={`flex items-start ${currentStyle.bgColor} hover:bg-gray-700/50 w-full`}>
-              {/* Line number column - more padding, consistent width */}
-              <span className="w-10 sm:w-12 px-2 text-right text-gray-600 select-none flex-shrink-0">
-                {/* Show line numbers logically (could be improved for complex diffs) */}
-                {lineType !== 'added' ? index + 1 : ''}
-              </span>
-              {/* Diff symbol column */}
-              <span className={`px-2 ${currentStyle.prefixColor} select-none flex-shrink-0`}>
-                {currentStyle.prefix}
-              </span>
-              {/* Code content - force it to take all remaining space */}
-              <span className={`flex-1 ${currentStyle.textColor} whitespace-pre-wrap break-words pr-4`} style={{ minWidth: "calc(100% - 80px)" }}>
-                {displayLine || ' '} {/* Render a space for empty lines to maintain height */}
-              </span>
-            </div>
-          );
-        })}
-      </pre>
+            // Define styles based on line type
+            const styles = {
+              added: {
+                bgColor: 'bg-green-600 bg-opacity-10',
+                prefix: '+',
+                prefixColor: 'text-green-500',
+                lineNumColor: 'text-gray-600', // Dim line number for added
+              },
+              removed: {
+                bgColor: 'bg-red-600 bg-opacity-10',
+                prefix: '-',
+                prefixColor: 'text-red-500',
+                lineNumColor: 'text-gray-600', // Dim line number for removed
+              },
+              context: {
+                bgColor: '', // No background for context
+                prefix: ' ', // Space for alignment
+                prefixColor: 'text-gray-600', // Dim prefix
+                lineNumColor: 'text-gray-600', // Dim line number for context
+              },
+            };
+
+            const currentStyle = styles[line.type];
+            const lineContent = line.content || ' ';
+
+            return (
+              // Apply background color to the whole line container and make it full width
+              <div key={line.key} className={`flex items-start ${currentStyle.bgColor} hover:bg-gray-700/50 w-full px-4`}> {/* Added px-4 */}
+                 {/* Line number column */}
+                 <span className={`w-10 text-right ${currentStyle.lineNumColor} select-none flex-shrink-0 mr-2 pt-px`}>
+                   {line.originalLineNumber}
+                 </span>
+                {/* Diff symbol column */}
+                <span className={`w-4 ${currentStyle.prefixColor} select-none flex-shrink-0 text-center pt-px`}> {/* Adjusted width */}
+                  {currentStyle.prefix}
+                </span>
+                {/* Code content - Use SyntaxHighlighter */}
+                <div className="flex-1 whitespace-pre-wrap break-words min-w-0 pl-2"> {/* Added pl-2 */}
+                  <SyntaxHighlighter
+                    language={language}
+                    style={customStyle}
+                    wrapLines={true}
+                    lineProps={{style: { whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}}
+                    PreTag="div"
+                    // Apply context text color if needed
+                    CodeTag={({ children, ...props }) => <span {...props} className={`text-sm ${line.type === 'context' ? 'text-gray-400' : ''}`}>{children}</span>}
+                  >
+                    {lineContent}
+                  </SyntaxHighlighter>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+       {/* Fallback if diffContent is empty/invalid initially */}
+       {!hasOriginalContent && (
+         <div className="p-4 text-gray-600">Loading diff or no content available...</div>
+       )}
     </div>
   );
 };
