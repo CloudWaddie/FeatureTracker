@@ -2,8 +2,8 @@
 # List URLs to monitor, one per line
 
 [dynamic_sources]
-gemini=https://gemini.google.com/app,www.gstatic.com/_/mss/
-
+[captcha]gemini=https://gemini.google.com/app,www.gstatic.com/_/mss/
+lmarenaweb=https://web.lmarena.ai/,_next/static/chunks/app/(home)/page
 
 # Supabase configuration
 [supabase]

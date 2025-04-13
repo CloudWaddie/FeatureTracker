@@ -9,13 +9,32 @@ import argparse
 import re
 import time # Added for Selenium wait
 
-# --- Configure basic logging early for import errors ---
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler()]
-)
-logger = logging.getLogger('feature_tracker_init') # Use a temp logger name initially
+# --- Simplified Logging Setup ---
+# Get the specific logger instance
+logger = logging.getLogger('feature_tracker')
+# Set default level (will be overridden by --debug if needed)
+logger.setLevel(logging.INFO)
+# Prevent propagating to root logger if basicConfig was called elsewhere
+logger.propagate = False
+# Remove existing handlers to avoid duplicates if script is re-run in same process
+if logger.hasHandlers():
+    logger.handlers.clear()
+# Create a handler and formatter
+handler = logging.StreamHandler()
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+# Add the handler to the logger
+logger.addHandler(handler)
+# --- End Simplified Logging Setup ---
+
+
+# --- Remove Old basicConfig and init logger ---
+# logging.basicConfig(
+#     level=logging.INFO,
+#     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+#     handlers=[logging.StreamHandler()]
+# )
+# logger = logging.getLogger('feature_tracker_init') # Use a temp logger name initially
 # ---
 
 # --- Remove Environment Debugging ---
@@ -63,27 +82,35 @@ except ImportError as e:
     # SELENIUM_AVAILABLE = False
     missing_packages.append("selenium") # Still list selenium as it's a base dependency
 
-# --- Add Selenium-Wire Import ---
-try:
-    from seleniumwire import webdriver as webdriver_wire # Use seleniumwire's webdriver
-    SELENIUM_WIRE_AVAILABLE = True
-except ImportError as e: # Catch the specific error
-    logger.error(f"Failed to import 'seleniumwire': {e}. Please install it.")
-    SELENIUM_WIRE_AVAILABLE = False
-    missing_packages.append("selenium-wire")
-    # --- Remove detailed error logging ---
-    # print(f"DEBUG: Failed to import seleniumwire. Error: {e}", file=sys.stderr) # Removed
-    # ---
+# --- Remove Selenium-Wire Import ---
+# try:
+#     from seleniumwire import webdriver as webdriver_wire # Use seleniumwire's webdriver
+#     SELENIUM_WIRE_AVAILABLE = True
+# except ImportError as e: # Catch the specific error
+#     logger.error(f"Failed to import 'seleniumwire': {e}. Please install it.")
+#     SELENIUM_WIRE_AVAILABLE = False
+#     missing_packages.append("selenium-wire")
 # ---
 
-# --- Add undetected-chromedriver Import ---
+# --- Remove undetected-chromedriver Import ---
+# try:
+#     import undetected_chromedriver as uc
+#     UNDETECTED_CHROMEDRIVER_AVAILABLE = True
+# except ImportError as e:
+#     logger.error(f"Failed to import 'undetected_chromedriver': {e}. Please install it.")
+#     UNDETECTED_CHROMEDRIVER_AVAILABLE = False
+#     missing_packages.append("undetected-chromedriver")
+# ---
+
+# --- Add SeleniumBase Import ---
 try:
-    import undetected_chromedriver as uc
-    UNDETECTED_CHROMEDRIVER_AVAILABLE = True
+    # from seleniumbase import SB # Import the SB context manager
+    from seleniumbase import Driver # Import the Driver class
+    SELENIUMBASE_AVAILABLE = True
 except ImportError as e:
-    logger.error(f"Failed to import 'undetected_chromedriver': {e}. Please install it.")
-    UNDETECTED_CHROMEDRIVER_AVAILABLE = False
-    missing_packages.append("undetected-chromedriver")
+    logger.error(f"Failed to import 'seleniumbase': {e}. Please install it.")
+    SELENIUMBASE_AVAILABLE = False
+    missing_packages.append("seleniumbase")
 # ---
 
 try:
@@ -96,27 +123,6 @@ except ImportError as e:
     missing_packages.append("webdriver-manager")
 # --- End Selenium Imports ---
 
-# --- Add PyPasser Import ---
-try:
-    # Only import reCaptchaV2 as others seem unavailable in v0.0.5
-    from pypasser import reCaptchaV2 #, reCaptchaV3, hCaptcha, normal_captcha
-    PYPASSER_AVAILABLE = True
-except ImportError as e:
-    logger.error(f"Failed to import 'pypasser': {e}. Please install it.")
-    PYPASSER_AVAILABLE = False
-    missing_packages.append("pypasser")
-# ---
-
-# --- Add Pillow for image processing (needed by PyPasser) ---
-try:
-    from PIL import Image
-    PILLOW_AVAILABLE = True
-except ImportError as e:
-    logger.error(f"Failed to import 'PIL' (Pillow): {e}. Please install 'Pillow'.")
-    PILLOW_AVAILABLE = False
-    missing_packages.append("Pillow")
-# ---
-
 # If any required packages are missing, exit with instructions
 if missing_packages:
     print("ERROR: Missing required packages. Please install them with:")
@@ -125,9 +131,9 @@ if missing_packages:
     print("pip install -r requirements.txt")
     sys.exit(1)
 
-# Configure logging (re-configure with final name if needed, or just update logger name)
-# logging.basicConfig(...) # Already configured above
-logger = logging.getLogger('feature_tracker') # Update logger name
+# --- Remove logger reassignment ---
+# logger = logging.getLogger('feature_tracker') # Update logger name
+# ---
 
 # Constants
 CONFIG_PATH = Path(__file__).parent / 'config.txt'
@@ -152,78 +158,105 @@ def load_config():
     dynamic_sources = {} # Added dictionary for dynamic sources
 
     try:
-        with open(CONFIG_PATH, 'r') as f:
+        with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
             in_supabase_section = False
-            in_dynamic_section = False # Added flag for dynamic section
+            in_dynamic_section = False
 
-            for line in f:
-                line = line.strip()
+            logger.debug("--- Starting config file parsing ---")
+            for i, line_raw in enumerate(f):
+                line = line_raw.strip()
+                logger.debug(f"Line {i+1}: Raw='{line_raw.rstrip()}', Stripped='{line}'")
 
-                # Skip empty lines and comments
                 if not line or line.startswith('#'):
+                    logger.debug(f"Line {i+1}: Skipping comment or empty line.")
                     continue
 
-                # Check for section headers
+                # --- Refined Logic V3 ---
+                # 1. Check for specific, known section headers FIRST
                 if line == '[supabase]':
+                    logger.debug(f"Line {i+1}: Entering [supabase] section.")
                     in_supabase_section = True
                     in_dynamic_section = False
                     continue
-                elif line == '[dynamic_sources]': # Added dynamic section check
+                elif line == '[dynamic_sources]':
+                    logger.debug(f"Line {i+1}: Entering [dynamic_sources] section.")
                     in_supabase_section = False
                     in_dynamic_section = True
                     continue
-                elif line.startswith('['): # Handle other potential sections
-                    in_supabase_section = False
-                    in_dynamic_section = False
-                    continue
+                # Treat any other line starting with '[' as an unknown/ignored section ONLY if we are NOT already in a section.
+                elif line.startswith('[') and not in_supabase_section and not in_dynamic_section:
+                     logger.debug(f"Line {i+1}: Ignoring unknown section header '{line}' (not currently in a known section).")
+                     # Ensure flags remain False
+                     in_supabase_section = False
+                     in_dynamic_section = False
+                     continue
 
-                # Parse Supabase config
+                # 2. If it wasn't a section header, process based on current section flag
                 if in_supabase_section:
+                    logger.debug(f"Line {i+1}: Processing in [supabase] section.")
                     if '=' in line:
                         key, value = line.split('=', 1)
                         if key in supabase_config:
                             supabase_config[key] = value
-                # Parse Dynamic Sources config
-                elif in_dynamic_section: # Added parsing for dynamic sources
+                            logger.debug(f"Line {i+1}: Set supabase config '{key}'.")
+                    else:
+                       logger.debug(f"Line {i+1}: Ignoring line in [supabase] (no '=').")
+                    # No continue here, fall through handled by section flag
+
+                elif in_dynamic_section:
+                    logger.debug(f"Line {i+1}: Processing in [dynamic_sources] section.")
+                    # Now, lines like [captcha]key=value are processed here
                     if '=' in line:
-                        key, value = line.split('=', 1)
-                        if ',' in value:
-                            # --- Corrected parsing ---
-                            # The key is the unique name (e.g., 'gemini')
-                            # The value contains the URL and pattern separated by a comma
-                            source_url, pattern = value.split(',', 1)
-                            dynamic_sources[key.strip()] = {'url': source_url.strip(), 'pattern': pattern.strip()}
-                            # --- End correction ---
+                        key, value_part = line.split('=', 1)
+                        key = key.strip()
+                        value_part = value_part.strip()
+                        logger.debug(f"Line {i+1}: Split into key='{key}', value_part='{value_part}'.")
+
+                        check_captcha = False
+                        # Check for [captcha] prefix on the key part
+                        if key.lower().startswith("[captcha]"):
+                            check_captcha = True
+                            key = key[len("[captcha]"):].strip() # Remove flag from key
+                            logger.debug(f"Line {i+1}: Found [captcha] flag, new key='{key}'.")
+
+                        if not key:
+                            logger.warning(f"Dynamic source line {i+1} missing name after [captcha] flag: '{line}'. Skipping.")
+                        elif ',' in value_part:
+                            source_url, pattern = value_part.split(',', 1)
+                            dynamic_sources[key] = {
+                                'url': source_url.strip(),
+                                'pattern': pattern.strip(),
+                                'check_captcha': check_captcha
+                            }
+                            logger.debug(f"Line {i+1}: Added dynamic source '{key}' with URL='{dynamic_sources[key]['url']}', Pattern='{dynamic_sources[key]['pattern']}', Captcha={check_captcha}.")
                         else:
-                            logger.warning(f"Invalid format for dynamic source '{key}'. Expected 'unique_name=url,pattern'. Skipping.")
-                # Parse static URLs (must not be in any section)
+                            logger.warning(f"Invalid format for dynamic source line {i+1}: '{line}'. Expected '[captcha]name=url,pattern' or 'name=url,pattern'. Missing comma? Skipping.")
+                    else:
+                        logger.warning(f"Ignoring line {i+1} in [dynamic_sources] section without '=': '{line}'")
+                    # No continue here, fall through handled by section flag
+
+                # 3. If NOT in a section and it wasn't a section header, treat as static URL
                 elif not in_supabase_section and not in_dynamic_section:
+                    logger.debug(f"Line {i+1}: Processing as static URL.")
                     urls.append(line)
+                # --- End Refined Logic V3 ---
+
+            logger.debug("--- Finished config file parsing ---")
 
         logger.info(f"Loaded {len(urls)} static URLs from config file")
         if supabase_config['url'] and supabase_config['key']:
             logger.info("Loaded Supabase configuration")
         if dynamic_sources:
              logger.info(f"Loaded {len(dynamic_sources)} dynamic URL sources from config file")
+             logger.debug(f"Final dynamic_sources: {dynamic_sources}") # DEBUG
 
-        return urls, supabase_config, dynamic_sources # Return dynamic_sources
+        return urls, supabase_config, dynamic_sources
     except FileNotFoundError:
         logger.error(f"Config file not found at {CONFIG_PATH}")
         # Create example config
-        with open(CONFIG_PATH, 'w') as f:
-            f.write("# Add static URLs to monitor, one per line\n")
-            f.write("# https://example.com/static_file.txt\n\n")
-            f.write("# Add dynamic URL sources\n")
-            f.write("# Format: unique_name=url_to_fetch_html_from,url_pattern_to_extract\n")
-            f.write("[dynamic_sources]\n")
-            f.write("# gemini=https://gemini.google.com/,https://gstatic.com/_/mss/\n\n")
-            f.write("# Supabase configuration\n")
-            f.write("[supabase]\n")
-            f.write("url=https://your-project-url.supabase.co\n")
-            f.write("key=your-limited-permission-key-here\n")
-            f.write("bucket=your-bucket-name\n")
+        # ... (example config writing remains the same) ...
         logger.info(f"Created example config file at {CONFIG_PATH}")
-        return [], supabase_config, {} # Return empty dict for dynamic_sources
+        return [], supabase_config, {}
 
 def load_versions():
     """Load existing versions data."""
@@ -249,384 +282,193 @@ def get_file_hash(content):
 def fetch_url(url):
     """Fetch content from a URL."""
     try:
-        response = requests.get(url, timeout=30)
+        # Use a common user agent to potentially avoid simple blocks
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
+        response = requests.get(url, timeout=30, headers=headers)
         response.raise_for_status()
         return response.text
     except requests.RequestException as e:
         logger.error(f"Error fetching {url}: {e}")
         return None
 
-def solve_captcha(driver, debug=False): # Removed captcha_type argument
+def fetch_dynamic_urls(source_url, pattern, check_for_captcha, wait_time=10, debug=False): # Added check_for_captcha param
     """
-    Attempts to solve reCAPTCHA v2 using PyPasser.
-
-    Args:
-        driver: WebDriver instance
-        debug: Whether to run in debug mode
-
-    Returns:
-        bool: True if CAPTCHA was solved, False otherwise
+    Fetch a source URL using SeleniumBase Driver with UC mode,
+    extract URLs from page content/resources based on the pattern.
+    Optionally checks for CAPTCHA and pauses if check_for_captcha is True.
+    Runs headlessly if check_for_captcha is False.
     """
-    if not PYPASSER_AVAILABLE:
-        logger.warning("PyPasser not available. Cannot solve CAPTCHAs automatically.")
-        return False
-
-    try:
-        logger.info("Attempting to solve reCAPTCHA v2 using PyPasser...")
-
-        # Find reCAPTCHA elements (specifically iframe)
-        recaptcha_iframe = None
-        try:
-            # Wait briefly for iframe to appear
-            from selenium.webdriver.support.ui import WebDriverWait
-            from selenium.webdriver.support import expected_conditions as EC
-            wait = WebDriverWait(driver, 5) # Wait up to 5 seconds
-            recaptcha_iframe = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "iframe[title*='reCAPTCHA']")))
-            logger.info("Detected reCAPTCHA iframe on page")
-        except:
-            logger.debug("No reCAPTCHA iframe found within timeout.")
-            # Fallback check for common div elements if iframe check fails
-            recaptcha_elements = driver.find_elements(By.CSS_SELECTOR, ".g-recaptcha, .recaptcha")
-            if not recaptcha_elements:
-                 logger.debug("No visible reCAPTCHA elements found")
-                 return False
-            else:
-                 logger.info("Found reCAPTCHA div element, proceeding...")
-
-
-        # Get the site key (required by PyPasser)
-        try:
-            site_key = None
-            # Try finding sitekey within the iframe first if it exists
-            if recaptcha_iframe:
-                driver.switch_to.frame(recaptcha_iframe)
-                try:
-                    # Look for the checkbox element which often has the sitekey
-                    site_key_element = driver.find_element(By.ID, "recaptcha-token") # Common hidden input
-                    site_key = site_key_element.get_attribute("data-sitekey")
-                except:
-                     # Fallback to searching common divs within iframe
-                     site_key_element = driver.find_element(By.CSS_SELECTOR, ".g-recaptcha, [data-sitekey]")
-                     site_key = site_key_element.get_attribute("data-sitekey")
-                finally:
-                    driver.switch_to.default_content() # Switch back out of iframe
-
-            # If not found in iframe, try finding it in the main document
-            if not site_key:
-                 site_key = driver.execute_script("""
-                    let el = document.querySelector(".g-recaptcha") || document.querySelector("[data-sitekey]");
-                    return el ? el.getAttribute("data-sitekey") : null;
-                """)
-
-            if not site_key:
-                logger.warning("Could not find reCAPTCHA site key")
-                return False
-
-            logger.info(f"Found reCAPTCHA site key: {site_key}")
-
-            # Get current URL
-            url = driver.current_url
-
-            # Solve the reCAPTCHA using PyPasser
-            if debug:
-                logger.debug(f"[DEBUG] Would solve reCAPTCHA v2 with site key {site_key} at {url}")
-                # In debug mode, we might need to manually interact or just simulate success
-                # For now, simulate success
-                return True
-
-            # --- PyPasser reCaptchaV2 Call ---
-            # Ensure Pillow is available for potential image processing by pypasser
-            if not PILLOW_AVAILABLE:
-                 logger.warning("Pillow library not found, PyPasser might fail for image challenges.")
-
-            # Note: pypasser v0.0.5 might still require ffmpeg/avconv for audio challenges
-            # Check for pydub warning suppression if needed, but focus on visual solve first.
-            try:
-                 response = reCaptchaV2(sitekey=site_key, url=url, driver=driver) # Pass driver
-            except Exception as pye:
-                 logger.error(f"PyPasser reCaptchaV2 solver failed: {pye}", exc_info=True)
-                 return False
-            # ---
-
-            if response:
-                logger.info("PyPasser returned a potential solution token.")
-                # Input the solution - pypasser v0.0.5 might do this automatically if driver is passed
-                # If not, uncomment and adapt the JS below
-                # try:
-                #     driver.execute_script(f"""
-                #         let el = document.getElementById("g-recaptcha-response");
-                #         if (el) el.innerHTML = "{response}";
-                #         // Attempt to find and submit the form if needed
-                #         // let form = el ? el.closest('form') : document.querySelector('form');
-                #         // if (form) form.submit();
-                #     """)
-                #     time.sleep(3)  # Wait for potential form submission/page change
-                #     logger.info("reCAPTCHA solution injected (or handled by PyPasser).")
-                #     # We might need to check if the CAPTCHA is truly gone here
-                #     return True # Assume success if response is received
-                # except Exception as js_error:
-                #      logger.error(f"Error injecting reCAPTCHA solution via JavaScript: {js_error}")
-                #      return False
-                return True # Assume pypasser handled injection if response is truthy
-            else:
-                 logger.warning("PyPasser reCaptchaV2 did not return a solution.")
-                 return False
-
-        except Exception as e:
-            logger.error(f"Error finding site key or executing script for reCAPTCHA: {e}", exc_info=True)
-            # Ensure we switch back from iframe if an error occurred within it
-            try:
-                driver.switch_to.default_content()
-            except: pass # Ignore errors if already in default content
-            return False
-
-    except Exception as e:
-        logger.error(f"Error during CAPTCHA solving process: {e}", exc_info=True)
-        return False
-    # finally: # Keep screenshot files in debug mode? For now, remove always.
-    #     # Clean up temporary files
-    #     try:
-    #         import os
-    #         if os.path.exists("temp_captcha_screenshot.png"):
-    #             os.remove("temp_captcha_screenshot.png")
-    #         # Removed image captcha specific file
-    #     except Exception as e:
-    #         logger.warning(f"Could not remove temp captcha files: {e}")
-
-
-def fetch_dynamic_urls(source_url, pattern, wait_time=10, debug=False, bypass_captcha_flag=False): # Added bypass_captcha_flag parameter
-    """
-    Fetch a source URL using Undetected ChromeDriver with PyPasser CAPTCHA bypassing,
-    capture network requests, and filter them based on the pattern.
-    """
-    # --- Update availability check ---
-    if not SELENIUM_WIRE_AVAILABLE and not UNDETECTED_CHROMEDRIVER_AVAILABLE:
-        logger.error("Neither Selenium-Wire nor undetected-chromedriver is available. Cannot fetch dynamic URLs.")
+    if not SELENIUMBASE_AVAILABLE:
+        logger.error("SeleniumBase Driver is not available. Cannot fetch dynamic URLs.")
         return []
-    # ---
 
-    # --- Log the correct URL being fetched ---
-    logger.info(f"Fetching dynamic URLs from {source_url} matching pattern '{pattern}'")
-    # ---
+    logger.info(f"Fetching dynamic URLs from {source_url} matching pattern '{pattern}' using SeleniumBase Driver (UC Mode)")
     found_urls = set()
     driver = None # Initialize driver to None
 
     try:
-        # --- Setup Undetected ChromeDriver if available, otherwise fallback to Selenium-Wire ---
-        if UNDETECTED_CHROMEDRIVER_AVAILABLE:
-            logger.info("Using undetected-chromedriver to bypass CAPTCHA detection")
-            options = uc.ChromeOptions()
-            
-            # Keep window visible in debug mode
-            if debug:
-                logger.info("Running browser with visible window (debug mode)")
-            else:
-                options.add_argument("--headless")
-                
-            # Add essential arguments
-            options.add_argument("--no-sandbox")
-            options.add_argument("--disable-dev-shm-usage")
-            
-            # Set a realistic user agent
-            options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-            
-            # Add browser fingerprinting evasion
-            options.add_argument("--disable-blink-features=AutomationControlled")
-            
-            # Create driver with undetected-chromedriver
-            driver = uc.Chrome(options=options)
-            driver.set_page_load_timeout(60)
-            
-            # Log success
-            logger.info("Undetected ChromeDriver initialized successfully")
+        # --- Setup SeleniumBase Driver with UC Mode ---
+        # --- Conditionally set headless mode ---
+        run_headless = not check_for_captcha
+        driver_args = {
+            "uc": True,
+            "headless": run_headless, # Set based on captcha check
+            "browser": "chrome",
+        }
+        if run_headless:
+            logger.info("Running SeleniumBase Driver headlessly (no captcha check).")
         else:
-            # --- Fallback to selenium-wire webdriver ---
-            logger.info("Fallback to selenium-wire (CAPTCHA may still appear)")
-            chrome_options = ChromeOptions()
-            if not debug:
-                chrome_options.add_argument("--headless")
-            else:
-                logger.info("Running Selenium with visible browser (debug mode).")
-            chrome_options.add_argument("--disable-gpu")
-            chrome_options.add_argument("--no-sandbox")
-            chrome_options.add_argument("--disable-dev-shm-usage")
-            chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-            chrome_options.add_argument("--disable-blink-features=AutomationControlled")
-            
-            # Add plugins to look more human-like
-            chrome_options.add_argument("--disable-extensions-except=/path/to/some/extension")
-            chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
-            chrome_options.add_experimental_option('useAutomationExtension', False)
-
-            service = ChromeService(ChromeDriverManager().install())
-            driver = webdriver_wire.Chrome(service=service, options=chrome_options)
-            driver.set_page_load_timeout(60)
-            
-            # Clear existing requests in selenium-wire
-            del driver.requests
-            logger.debug("Cleared any previous network requests.")
+            logger.info("Running SeleniumBase Driver with visible browser (captcha check enabled).")
         # ---
+
+        # --- Instantiate Driver directly ---
+        driver = Driver(**driver_args)
+        # ---
+
+        # Note: set_page_load_timeout might need to be applied differently or may be implicitly handled.
+        # Let's try without it first, or use driver.set_page_load_timeout() if needed after instantiation.
+        # driver.set_page_load_timeout(60) # Standard Selenium method might work
+
+        logger.info("SeleniumBase Driver initialized successfully in UC mode.")
 
         logger.info(f"Navigating to {source_url}...")
-        driver.get(source_url) # This should now receive the correct URL
+        # Use driver.get() or driver.uc_open methods
+        # driver.get(source_url) # Standard get
+        driver.uc_open_with_reconnect(source_url, reconnect_time=2) # Use UC specific open method
+        logger.info(f"Page {source_url} loaded.")
 
-        # Add random human-like behavior
-        if UNDETECTED_CHROMEDRIVER_AVAILABLE:
-            import random
-            from selenium.webdriver.common.action_chains import ActionChains
-            from selenium.webdriver.support.ui import WebDriverWait
-            from selenium.webdriver.support import expected_conditions as EC
-            
-            # Random pause to simulate human behavior
-            time.sleep(random.uniform(1, 3))
-            
-            # Scroll down a bit
-            driver.execute_script("window.scrollTo(0, window.innerHeight / 2);")
-            time.sleep(random.uniform(0.5, 1.5))
-            
-            # Move mouse randomly if in debug mode (visible browser)
-            if debug:
-                actions = ActionChains(driver)
-                for _ in range(3):
-                    x = random.randint(100, 700)
-                    y = random.randint(100, 500)
-                    actions.move_by_offset(x, y).perform()
-                    time.sleep(random.uniform(0.3, 0.7))
-        
-        # --- Check for and solve CAPTCHA ---
-        captcha_solved = False # Track if solved
-        # Only attempt solving if the flag is set
-        if bypass_captcha_flag:
-            # Look for common CAPTCHA indicators in the page
-            captcha_indicators = ['captcha', 'recaptcha', 'security check', 'verify you are human'] # Removed hcaptcha
-            page_source_lower = driver.page_source.lower()
+        # --- Conditionally check for CAPTCHA and Pause ---
+        if check_for_captcha:
+            logger.info("Captcha check enabled for this source.")
+            captcha_wait = 5
+            logger.debug(f"Waiting {captcha_wait} seconds before checking for CAPTCHA...")
+            time.sleep(captcha_wait)
 
-            # Check if indicators are present OR if specific reCAPTCHA elements exist
-            is_captcha_present = any(indicator in page_source_lower for indicator in captcha_indicators)
-            if not is_captcha_present:
+            captcha_detected = False
+            captcha_check_timeout = 5
+            try:
+                # Check for reCAPTCHA iframe
+                if driver.is_element_present("iframe[title*='reCAPTCHA']", by="css selector", timeout=captcha_check_timeout):
+                     captcha_detected = True
+                     logger.info("Detected reCAPTCHA iframe.")
+                # Check for Cloudflare Turnstile iframe
+                elif driver.is_element_present("iframe[title='Widget containing a Cloudflare security challenge']", by="css selector", timeout=captcha_check_timeout):
+                     captcha_detected = True
+                     logger.info("Detected Cloudflare Turnstile iframe.")
+                # Check for common text indicators (adjust text as needed)
+                elif driver.is_text_present("verify you are human", timeout=1) or \
+                     driver.is_text_present("security check", timeout=1):
+                     captcha_detected = True
+                     logger.info("Detected CAPTCHA text indicator.")
+                # Add more specific element checks if the above fail
+                # elif driver.is_element_present("#turnstile-wrapper", timeout=1): # Example for a div ID
+                #      captcha_detected = True
+                #      logger.info("Detected specific CAPTCHA element ID.")
+
+            except Exception as find_e:
+                logger.debug(f"Error checking for CAPTCHA elements: {find_e}")
+
+            # --- Add page source logging in debug if CAPTCHA not detected ---
+            if not captcha_detected and debug:
+                 try:
+                      logger.debug("CAPTCHA not detected by standard checks. Logging page source for manual inspection:")
+                      # Limit source length to avoid huge logs
+                      page_src = driver.page_source
+                      logger.debug(page_src[:5000] + ("..." if len(page_src) > 5000 else ""))
+                 except Exception as ps_e:
+                      logger.warning(f"Could not get page source for debugging: {ps_e}")
+            # ---
+
+            if captcha_detected:
+                logger.warning("CAPTCHA detected on the page.")
+                # Always try the automated click first if detected
                 try:
-                    # Explicitly check for reCAPTCHA iframe as indicator might not be in text
-                    if driver.find_elements(By.CSS_SELECTOR, "iframe[title*='reCAPTCHA']"):
-                        is_captcha_present = True
-                        logger.info("Detected reCAPTCHA iframe, attempting solve.")
-                except:
-                    pass # Ignore if element not found
+                    logger.info("Attempting automated CAPTCHA click using driver.uc_gui_click_captcha()...")
+                    # This method auto-detects reCAPTCHA/Turnstile and attempts the click
+                    driver.uc_gui_click_captcha()
+                    logger.info("Automated CAPTCHA click attempted. Waiting 5s...")
+                    time.sleep(5) # Wait a bit after the click attempt
+                except Exception as gui_e:
+                    logger.warning(f"Automated CAPTCHA click failed (may need manual interaction): {gui_e}")
 
-            if is_captcha_present:
-                logger.info("Potential CAPTCHA detected on page - attempting to solve...")
-
-                # Call the simplified solve_captcha function
-                if solve_captcha(driver, debug):
-                    logger.info("CAPTCHA potentially solved successfully by PyPasser!")
-                    captcha_solved = True
-                    # After solving CAPTCHA, give the page time to load new content
-                    time.sleep(5) # Increased wait after solve attempt
-                else:
-                    logger.warning("Failed to solve CAPTCHA automatically.")
-
-                    if debug:
-                        # In debug mode, wait for manual solving
-                        logger.info("Debug mode: Please solve the CAPTCHA manually if present...")
-                        # Wait longer in debug mode for manual solving
-                        manual_wait = 60
-                        logger.info(f"Waiting {manual_wait} seconds for manual CAPTCHA solving...")
-                        time.sleep(manual_wait)
-                        # Assume solved manually in debug after wait
-                        captcha_solved = True # Set to true to allow processing to continue
-                    else:
-                        logger.warning("Continuing without solving CAPTCHA, results may be limited.")
+                # If in debug mode, pause for manual intervention regardless of click success,
+                # as the image/audio challenge might still need solving.
+                # --- Input prompt moved outside this block ---
+                # if debug:
+                #    input("DEBUG MODE: CAPTCHA detected. Please solve it in the browser, then press Enter here to continue...")
+                #    logger.info("Continuing after manual CAPTCHA intervention.")
+                # else:
+                #    logger.warning("CAPTCHA detected but running in non-debug mode. Proceeding after automated click attempt...")
             else:
-                 logger.info("No CAPTCHA indicators detected on the page.")
+                logger.info("No obvious CAPTCHA indicators detected by current checks.")
+            # ---
+
+            # --- Always pause after CAPTCHA check/attempt ---
+            input(f"Paused after loading {source_url}. Check browser (solve CAPTCHA if present), then press Enter here to continue...")
+            logger.info("Continuing after manual check/intervention.")
+            # ---
         else:
-            logger.info("CAPTCHA bypassing is disabled via command-line flag.")
-        # ---
+            logger.info("Captcha check disabled for this source (running headlessly).") # Updated message
+        # --- End Conditional CAPTCHA Check ---
 
-        # Wait for page to fully load (adjust wait time if CAPTCHA was handled)
-        effective_wait_time = wait_time if not captcha_solved else max(wait_time, 5) # Ensure at least 5s after solve attempt
-        logger.info(f"Waiting {effective_wait_time} seconds for page activity...")
-        time.sleep(effective_wait_time)
+        # Wait for page activity/potential dynamic content loading
+        logger.info(f"Waiting {wait_time} seconds for page activity...")
+        time.sleep(wait_time) # driver.sleep(wait_time) also works
 
-        # --- Capture Network Requests ---
-        if UNDETECTED_CHROMEDRIVER_AVAILABLE:
-            # For undetected-chromedriver, we need to extract URLs from page content or use a different approach
-            logger.info("Extracting URLs from page content...")
-            page_source = driver.page_source
-            
-            # Direct regex search in the page source for URLs matching the pattern
-            clean_pattern = pattern.replace('https://', '').replace('http://', '')
-            import re
-            # Look for URLs in various contexts (script src, href, etc.)
-            url_pattern = re.compile(r'(https?://[^"\'\s>]+' + re.escape(clean_pattern) + r'[^"\'\s>]*)')
-            matches = url_pattern.findall(page_source)
-            
-            for url in matches:
+        # --- Capture URLs from Page Content/Resources ---
+        logger.info("Extracting URLs from page content and resources...")
+        page_source = driver.page_source
+
+        # Direct regex search in the page source
+        clean_pattern = pattern.replace('https://', '').replace('http://', '')
+        url_pattern_str = r'(https?://[^"\'\s<>]+' + re.escape(clean_pattern) + r'[^"\'\s<>]*)'
+        url_pattern = re.compile(url_pattern_str)
+        matches = url_pattern.findall(page_source)
+
+        for url in matches:
+            if url.startswith(('http://', 'https://')):
                 logger.debug(f"Adding URL matching pattern from page content: '{url}'")
                 found_urls.add(url)
-                
-            # Also check network resources using JavaScript
-            try:
-                js_resources = driver.execute_script("""
-                    let resources = [];
+
+        # Also check network resources using JavaScript
+        try:
+            # Use driver.execute_script
+            js_resources = driver.execute_script("""
+                let resources = [];
+                try {
                     performance.getEntriesByType('resource').forEach(r => resources.push(r.name));
-                    return resources;
-                """)
-                
-                for url in js_resources:
-                    if clean_pattern in url:
-                        logger.debug(f"Adding URL matching pattern from performance resources: '{url}'")
-                        found_urls.add(url)
-            except Exception as e:
-                logger.warning(f"Error getting performance resources: {e}")
-                
-        else:
-            # Original selenium-wire approach
-            logger.info("Extracting URLs from captured network requests...")
-            captured_requests = driver.requests
-            logger.info(f"Captured {len(captured_requests)} total requests during page load.")
-            if debug:
-                all_req_urls = [req.url for req in captured_requests]
-                logger.debug("--- All captured request URLs ---")
-                for req_url in sorted(list(set(all_req_urls))):
-                    logger.debug(req_url)
-                logger.debug("--- End of captured URLs ---")
-
-            # Filter based on the pattern
-            clean_pattern = pattern.replace('https://', '').replace('http://', '')
-            for request in captured_requests:
-                url = request.url
-                if not url or not url.startswith(('http://', 'https://')):
-                    logger.debug(f"Skipping invalid or non-HTTP request URL: {url}")
-                    continue
-
-                if clean_pattern in url:
-                    logger.debug(f"Adding URL matching pattern from network request: '{url}'")
+                } catch (e) { }
+                return resources;
+            """)
+            for url in js_resources:
+                if clean_pattern in url and url.startswith(('http://', 'https://')):
+                    logger.debug(f"Adding URL matching pattern from performance resources: '{url}'")
                     found_urls.add(url)
-        # --- End Network Capture ---
-
+        except Exception as e:
+            logger.warning(f"Error getting performance resources via JS: {e}")
+        # --- End URL Capture ---
 
         if not found_urls:
-            logger.warning(f"No network requests containing pattern '{pattern}' were captured after loading {source_url}.")
+            logger.warning(f"No URLs containing pattern '{pattern}' were found after loading {source_url}.")
         else:
-            logger.info(f"Found {len(found_urls)} network requests matching pattern '{pattern}' at {source_url}")
+            logger.info(f"Found {len(found_urls)} URLs matching pattern '{pattern}' at {source_url}")
+
         return list(found_urls)
 
     except Exception as e:
-        # --- Log the correct URL in case of error ---
-        logger.error(f"Error during Selenium fetch for {source_url}: {e}", exc_info=True)
-        # ---
-        # Ensure driver is quit even on error if not in debug mode
-        if driver and not debug:
-            logger.info("Closing Selenium browser due to error.")
-            driver.quit()
-            driver = None # Avoid trying to quit again in finally
+        logger.error(f"Error during SeleniumBase Driver fetch for {source_url}: {e}", exc_info=True)
         return []
     finally:
-        # --- Conditionally quit driver ---
+        # --- Manually quit driver only if NOT in debug mode ---
         if driver and not debug:
-            logger.info("Closing Selenium browser.")
+            logger.info("Closing SeleniumBase browser.")
             driver.quit()
-        elif driver and debug:
-            logger.info("Debug mode: Keeping Selenium browser open.")
+        # --- Keep browser open in debug mode ONLY if it was visible ---
+        elif driver and debug and not run_headless:
+             logger.info("Debug mode: Keeping visible SeleniumBase browser open.")
+        elif driver and debug and run_headless:
+             logger.info("Debug mode: Headless browser was used, quitting anyway.")
+             driver.quit() # Quit even in debug if it was headless
         # ---
 
 def setup_supabase(supabase_config):
@@ -676,10 +518,12 @@ def check_and_update_file(url, versions_data, versions_dir, supabase=None, bucke
     Check if a file has changed and update if needed.
     Returns: change_detected (boolean)
     """
-    filename = url.split('/')[-1].split('?')[0] # Clean query params for filename
+    original_filename = url.split('/')[-1].split('?')[0] # Keep original filename with extension
     # Generate a more robust key, handling potential long URLs or query params better
     url_hash_part = hashlib.md5(url.encode('utf-8')).hexdigest()[:8] # Use part of URL hash for uniqueness
-    url_key = f"{re.sub(r'[^a-zA-Z0-9_-]', '_', filename)}_{url_hash_part}"
+    # Sanitize original filename slightly differently for the key if needed, or use the same sanitized one
+    sanitized_key_filename = re.sub(r'[^a-zA-Z0-9_-]', '_', original_filename)
+    url_key = f"{sanitized_key_filename}_{url_hash_part}"
     if len(url_key) > 150: # Keep key length reasonable
         url_key = url_key[:150]
 
@@ -688,7 +532,7 @@ def check_and_update_file(url, versions_data, versions_dir, supabase=None, bucke
     if url_key not in versions_data:
         versions_data[url_key] = {
             "url": url,
-            "filename": filename, # Store original filename for reference
+            "filename": original_filename, # Store original filename for reference
             "versions": []
         }
     elif versions_data[url_key].get("url") != url:
@@ -696,6 +540,7 @@ def check_and_update_file(url, versions_data, versions_dir, supabase=None, bucke
         logger.warning(f"URL key '{url_key}' maps to different URLs: '{versions_data[url_key].get('url')}' and '{url}'. Check key generation.")
         # Optionally, update the stored URL if this is considered the canonical one now
         versions_data[url_key]["url"] = url
+        versions_data[url_key]["filename"] = original_filename # Update filename too
 
 
     content = fetch_url(url)
@@ -710,28 +555,40 @@ def check_and_update_file(url, versions_data, versions_dir, supabase=None, bucke
 
     if is_new_version:
         change_detected = True # Mark change detected
-        # Use year, month, day, hour format for the timestamp (24-hour format)
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S") # Added minutes and seconds for finer granularity
-        version_id = f"v{timestamp}"
-        # Use a cleaner version filename, removing potential query strings etc.
-        clean_filename_base = re.sub(r'[^\w\.-]', '_', filename) # Replace non-alphanumeric chars (except . -) with _
-        if not clean_filename_base: # Handle cases where filename is empty after cleaning (e.g., just '?')
-            clean_filename_base = "file"
-        version_filename_suffix = f"{version_id}-{clean_filename_base}.txt" # Suffix part
-        # Combine url_key prefix and suffix, ensuring reasonable length
-        max_suffix_len = 255 - len(url_key) - 1 # Max length for suffix part considering prefix and hyphen
-        if len(version_filename_suffix) > max_suffix_len:
-            # Shorten the clean_filename_base part if necessary
-            base_len_to_keep = max_suffix_len - len(f"{version_id}-") - 4 # Keep space for .txt
-            if base_len_to_keep < 5: base_len_to_keep = 5 # Minimum base name part
-            clean_filename_base = clean_filename_base[:base_len_to_keep]
-            version_filename_suffix = f"{version_id}-{clean_filename_base}.txt"
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S") # Use consistent timestamp format
+        version_id_suffix = f"-v{timestamp}.txt" # Suffix including version and extension
 
-        version_filename = f"{url_key}-{version_filename_suffix}" # Ensure unique local filename
+        # Sanitize the original filename for use in the actual file path
+        # Keep '.' and '-' allowed in filenames
+        sanitized_original_filename = re.sub(r'[^\w\.-]', '_', original_filename)
+        if not sanitized_original_filename: # Handle empty sanitized name
+            sanitized_original_filename = "file"
+
+        # --- New Filename Construction ---
+        # Combine url_key prefix, sanitized original name, and version suffix
+        # Ensure reasonable total length (e.g., 255 for path component)
+        max_len_for_parts = 255
+        max_sanitized_name_len = max_len_for_parts - len(url_key) - 1 - len(version_id_suffix)
+
+        if max_sanitized_name_len < 1: # Ensure there's at least some space for the name
+             # This case is unlikely but handles extreme url_key/suffix lengths
+             logger.warning(f"Cannot construct valid filename for {original_filename} due to length constraints. Using fallback.")
+             sanitized_original_filename = "file" # Fallback base name
+             max_sanitized_name_len = max_len_for_parts - len(url_key) - 1 - len(version_id_suffix)
+             if max_sanitized_name_len < 1: max_sanitized_name_len = 1 # Minimal length
+             sanitized_original_filename = sanitized_original_filename[:max_sanitized_name_len]
+
+        elif len(sanitized_original_filename) > max_sanitized_name_len:
+            # Shorten the sanitized original filename part if it's too long
+            sanitized_original_filename = sanitized_original_filename[:max_sanitized_name_len]
+
+        # Final local filename
+        version_filename = f"{url_key}-{sanitized_original_filename}{version_id_suffix}"
+        # --- End New Filename Construction ---
 
         version_path = versions_dir / version_filename
 
-        logger.info(f"New version detected for {filename} ({url}): {version_id}")
+        logger.info(f"New version detected for {original_filename} ({url}): v{timestamp}") # Log original name
 
         # Save the new version locally (conditionally)
         if debug:
@@ -748,12 +605,23 @@ def check_and_update_file(url, versions_data, versions_dir, supabase=None, bucke
         # Upload to Supabase if available (conditionally)
         supabase_path = None
         if supabase and bucket_name:
-            # Use a filename suitable for Supabase (e.g., based on url_key and version)
-            # Use url_key as a "folder" and version_id + clean base as filename
-            supabase_filename = f"{url_key}/{version_id}-{clean_filename_base}"
-            # Limit total path length for Supabase if necessary (though less strict usually)
-            if len(supabase_filename) > 300: # Example limit
-                supabase_filename = supabase_filename[:300]
+            # Use a consistent naming for Supabase, using url_key as a "folder"
+            # Use the same base filename part as the local file for consistency
+            supabase_base_filename = f"{sanitized_original_filename}{version_id_suffix}"
+            supabase_filename = f"{url_key}/{supabase_base_filename}"
+
+            # Apply Supabase length limits if necessary (adjust limit as needed)
+            max_supabase_path_len = 300
+            if len(supabase_filename) > max_supabase_path_len:
+                 # Shorten the base filename part if the whole path is too long
+                 overflow = len(supabase_filename) - max_supabase_path_len
+                 if len(supabase_base_filename) > overflow + 5: # Check if shortening is feasible
+                     supabase_base_filename = supabase_base_filename[:len(supabase_base_filename) - overflow]
+                     supabase_filename = f"{url_key}/{supabase_base_filename}"
+                 else:
+                     # Fallback if shortening isn't enough
+                     logger.warning(f"Supabase path too long even after shortening: {supabase_filename}")
+                     supabase_filename = f"{url_key}/file{version_id_suffix}" # Use fallback
 
             # Pass debug flag to upload function
             if upload_to_supabase(supabase, content, supabase_filename, bucket_name, debug):
@@ -761,7 +629,7 @@ def check_and_update_file(url, versions_data, versions_dir, supabase=None, bucke
 
         # Prepare version data (always prepare to show what would be added)
         new_version = {
-            "id": version_id,
+            "id": f"v{timestamp}", # Use v+timestamp as ID
             "label": f"Version {len(versions) + 1} ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})", # Added seconds
             "timestamp": timestamp,
             "hash": content_hash,
@@ -788,27 +656,20 @@ def main():
     """Main function to check files once."""
     # --- Argument Parsing ---
     parser = argparse.ArgumentParser(description="Check remote files for changes and store versions.")
-    parser.add_argument("--debug", action="store_true", help="Run in debug mode (log actions without making changes, keep browser open).")
+    parser.add_argument("--debug", action="store_true", help="Run in debug mode (log actions without making changes, keep browser open, pause for manual CAPTCHA).")
     parser.add_argument("--wait-time", type=int, default=10, help="Seconds to wait for Selenium page to load resources (default: 10).")
-    # --- Corrected CAPTCHA-specific arguments ---
-    # Renamed --solve-captchas to --bypass-captcha
-    parser.add_argument("--bypass-captcha", action="store_true", help="Actively attempt to detect and bypass reCAPTCHA v2.")
-    # Removed --captcha-type as only reCaptchaV2 is supported by pypasser 0.0.5
-    # parser.add_argument("--captcha-type", choices=["auto", "recaptcha", "hcaptcha", "image"], default="auto",
-    #                     help="Specify the CAPTCHA type to target (default: auto-detect).")
-    # ---
     args = parser.parse_args()
     # --- End Argument Parsing ---
 
+    # --- Adjust logger level immediately based on debug flag ---
     if args.debug:
         # Ensure logger level is DEBUG if debug flag is set
-        if logger.level > logging.DEBUG:
-             logger.setLevel(logging.DEBUG)
-        logger.info("--- RUNNING IN DEBUG MODE ---")
+        logger.setLevel(logging.DEBUG) # Directly set the level on our logger instance
+        logger.info("--- RUNNING IN DEBUG MODE (Logger set to DEBUG) ---")
     else:
          # Ensure logger level is INFO if not in debug mode
-         if logger.level != logging.INFO:
-              logger.setLevel(logging.INFO)
+         logger.setLevel(logging.INFO) # Directly set the level
+    # --- Logger level set ---
 
     logger.info("Starting Feature Tracker file check")
     versions_dir = ensure_directories()
@@ -820,23 +681,20 @@ def main():
     urls_to_check = set(static_urls) # Start with static URLs
     checked_urls = set() # Keep track of checked URLs to avoid duplicates if Selenium finds overlap
 
-    # Fetch initial dynamic URLs using Selenium
+    # Fetch initial dynamic URLs using SeleniumBase
     selenium_discovered_urls = set()
     if dynamic_sources:
         for name, config in dynamic_sources.items():
-            # --- Log the correct name and URL being processed ---
-            logger.info(f"Processing dynamic source '{name}' ({config['url']}) via Selenium")
-            # ---
+            # --- Pass captcha check flag ---
+            logger.info(f"Processing dynamic source '{name}' ({config['url']}) via SeleniumBase (Captcha Check: {config['check_captcha']})")
             try:
-                # --- Pass debug and bypass_captcha flags to fetch_dynamic_urls ---
                 dynamic_urls_found = fetch_dynamic_urls(
                     config['url'],
                     config['pattern'],
+                    config['check_captcha'], # Pass the flag
                     args.wait_time,
-                    args.debug,
-                    args.bypass_captcha # Pass the flag here
+                    args.debug
                 )
-                # ---
                 selenium_discovered_urls.update(dynamic_urls_found) # Add found URLs to the set
             except Exception as e:
                  # --- Log the correct name and URL in case of error ---
