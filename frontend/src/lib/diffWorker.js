@@ -1,4 +1,4 @@
-import { parsePatch } from 'diff';
+import { parsePatch, diffChars } from 'diff';
 
 // Listen for messages from the main thread
 self.onmessage = (event) => {
@@ -48,41 +48,77 @@ self.onmessage = (event) => {
       diff.hunks.forEach((hunk, hunkIndex) => {
         let oldLineNum = hunk.oldStart;
         let newLineNum = hunk.newStart;
+        let processedLinesInHunk = []; // Store lines temporarily for char diff pairing
+        let lastRemovedLineIndex = -1; // Index in processedLinesInHunk of the last removed line
 
-        // Only need one pass now as char diff is deferred
         for (let i = 0; i < hunk.lines.length; i++) {
           const patchLine = hunk.lines[i];
           const lineType = patchLine.startsWith('+') ? 'added' :
                            patchLine.startsWith('-') ? 'removed' : 'context';
           let originalLineContent = '';
           let displayLineNumber = null;
+          let currentLineObj = null;
 
           if (lineType === 'context') {
-            originalLineContent = originalLinesA[oldLineNum - 1] ?? '';
-            displayLineNumber = newLineNum;
+            originalLineContent = originalLinesA[oldLineNum - 1] ?? ''; // Content comes from A for context
+            displayLineNumber = newLineNum; // Display new line number for context
+            currentLineObj = {
+              key: `line-${diffIndex}-${hunkIndex}-${lineKeyCounter++}`,
+              type: lineType,
+              content: originalLineContent,
+              lineNumber: displayLineNumber,
+              charDiff: null,
+            };
+            processedLinesInHunk.push(currentLineObj);
+            lastRemovedLineIndex = -1; // Reset removed line tracking
             oldLineNum++;
             newLineNum++;
           } else if (lineType === 'removed') {
             originalLineContent = originalLinesA[oldLineNum - 1] ?? '';
-            displayLineNumber = oldLineNum;
+            displayLineNumber = oldLineNum; // Display old line number for removed
+            currentLineObj = {
+              key: `line-${diffIndex}-${hunkIndex}-${lineKeyCounter++}`,
+              type: lineType,
+              content: originalLineContent,
+              lineNumber: displayLineNumber,
+              charDiff: null, // Initialize charDiff
+            };
+            processedLinesInHunk.push(currentLineObj);
+            lastRemovedLineIndex = processedLinesInHunk.length - 1; // Track this removed line
             oldLineNum++;
           } else if (lineType === 'added') {
             originalLineContent = originalLinesB[newLineNum - 1] ?? '';
-            displayLineNumber = newLineNum;
+            displayLineNumber = newLineNum; // Display new line number for added
+             currentLineObj = {
+              key: `line-${diffIndex}-${hunkIndex}-${lineKeyCounter++}`,
+              type: lineType,
+              content: originalLineContent,
+              lineNumber: displayLineNumber,
+              charDiff: null, // Initialize charDiff
+            };
+
+            // Attempt to pair with the last removed line
+            if (lastRemovedLineIndex !== -1) {
+              const removedLine = processedLinesInHunk[lastRemovedLineIndex];
+              // Ensure the removed line hasn't already been paired
+              if (removedLine && removedLine.type === 'removed' && !removedLine.paired) {
+                 const charDiffResult = diffChars(removedLine.content, currentLineObj.content);
+                 // Store char diff on both lines
+                 removedLine.charDiff = charDiffResult;
+                 currentLineObj.charDiff = charDiffResult;
+                 removedLine.paired = true; // Mark as paired
+                 lastRemovedLineIndex = -1; // Reset tracker
+              }
+            }
+            processedLinesInHunk.push(currentLineObj);
+            // Don't reset lastRemovedLineIndex here, allow consecutive adds after a remove
             newLineNum++;
           }
-
-          const lineObj = {
-            key: `line-${diffIndex}-${hunkIndex}-${lineKeyCounter++}`,
-            type: lineType,
-            content: originalLineContent,
-            lineNumber: displayLineNumber,
-            charDiff: null, // Char diff is handled on demand in main thread
-          };
-          allLines.push(lineObj);
         }
+        // Add processed lines for this hunk to the main list
+        allLines.push(...processedLinesInHunk);
       });
-     });
+    });
      // --- End of processing logic ---
 
     // --- Check for duplicate keys before posting ---

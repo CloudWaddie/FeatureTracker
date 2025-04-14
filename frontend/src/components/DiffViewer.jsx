@@ -34,18 +34,60 @@ const customStyle = {
   }
 };
 
-// Helper function to render line content
-const renderLineContent = (line, language) => { // Removed index, allLines args
+// Helper function to render line content, now handling char diffs
+const renderLineContent = (line, language) => {
   if (!line) return null;
 
-  // Render with SyntaxHighlighter
+  // If charDiff data exists, render character differences based on line type
+  if (line.charDiff) {
+    return (
+      <span className="whitespace-pre-wrap break-all">
+        {line.charDiff.map((part, index) => {
+          let className = '';
+
+          if (line.type === 'removed') {
+            // Show removed and common parts on a removed line
+            if (part.removed) {
+              // Highlight removed characters with a darker red
+              className = 'bg-red-600 bg-opacity-50'; // Darker red highlight
+            } else if (!part.added) {
+              // Style common characters slightly dimmed on removed lines
+              className = 'opacity-70';
+            } else {
+              // Don't render added parts on a removed line
+              return null;
+            }
+          } else if (line.type === 'added') {
+            // Show added and common parts on an added line
+            if (part.added) {
+              // Highlight added characters with a darker green
+              className = 'bg-green-600 bg-opacity-50'; // Darker green highlight
+            } else if (!part.removed) {
+              // Style common characters normally on added lines
+              className = ''; // No extra style for common parts here
+            } else {
+              // Don't render removed parts on an added line
+              return null;
+            }
+          }
+
+          return (
+            <span key={index} className={className}>
+              {part.value}
+            </span>
+          );
+        })}
+      </span>
+    );
+  }
+
+  // Otherwise, render the whole line with SyntaxHighlighter
   return (
     <SyntaxHighlighter
       language={language}
       style={customStyle}
       useInlineStyles={true}
       wrapLines={true}
-      // Ensure wrapping styles are applied correctly by the highlighter
       lineProps={{ style: { whiteSpace: 'pre-wrap', wordBreak: 'break-all', display: 'block' } }}
     >
       {line.content || ''}
@@ -77,8 +119,8 @@ const RowComponent = ({ index, style, data }) => {
     >
        <span className="w-10 text-right pr-2 text-gray-500 select-none flex-shrink-0">{line.lineNumber || ''}</span>
        <span className="w-4 pl-1 select-none flex-shrink-0">{linePrefix}</span>
-       {/* Remove flex-1 to prevent vertical expansion */}
-       <span className="pl-2 overflow-hidden">
+       {/* Ensure the content span allows wrapping and takes necessary space */}
+       <span className="pl-2 overflow-hidden flex-grow">
           {renderLineContent(line, language)}
         </span>
       </div>
