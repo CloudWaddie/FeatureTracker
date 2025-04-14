@@ -1,8 +1,9 @@
 // components/DiffViewer.jsx
 import React, { useEffect, useMemo } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-// Correct the import path for the style
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'; // Note: If this path still fails, try 'react-syntax-highlighter/dist/cjs/styles/prism/vsc-dark-plus' or check your installed version's structure.
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+// Import necessary functions from 'diff'
+import { parsePatch, diffChars } from 'diff';
 
 // Customize the style slightly for better integration
 const customStyle = {
@@ -10,188 +11,236 @@ const customStyle = {
   // Ensure the background is transparent to show the underlying diff color
   'code[class*="language-"]': {
     ...vscDarkPlus['code[class*="language-"]'],
-    backgroundColor: 'transparent',
-    color: 'inherit', // Inherit color initially, syntax highlighting will override where needed
-    textShadow: 'none', // Remove default text shadow if any
+    backgroundColor: 'transparent', // Make code background transparent
+    color: 'inherit', // Inherit color from parent line style
+    textShadow: 'none',
+    display: 'inline', // Allow inline rendering within the line div
+    padding: '0',
+    margin: '0',
+    whiteSpace: 'pre-wrap', // Ensure wrapping within the highlighter
+    wordBreak: 'break-all', // Break long words/tokens
   },
   'pre[class*="language-"]': {
     ...vscDarkPlus['pre[class*="language-"]'],
-    backgroundColor: 'transparent',
+    backgroundColor: 'transparent', // Make pre background transparent
     padding: '0', // Remove default padding from pre tag
-    margin: '0', // Remove default margin
+    margin: '0',
     overflow: 'visible', // Prevent scrollbars within the line
+    whiteSpace: 'pre-wrap', // Allow wrapping
+    wordBreak: 'break-all', // Break long words/tokens
+  }
+};
+
+// Helper function to render line content with character diffs if available
+const renderLineContent = (line, language) => {
+  if (line.charDiff) {
+    // Render character diffs based on ORIGINAL content
+    return line.charDiff.map((part, index) => {
+      const charStyles = {
+        added: 'bg-green-600 bg-opacity-40 text-green-100', // More prominent char add
+        removed: 'bg-red-600 bg-opacity-40 text-red-100 line-through', // More prominent char remove
+        context: '', // No special style for context chars within a changed line
+      };
+      const type = part.added ? 'added' : part.removed ? 'removed' : 'context';
+      // Only render non-removed characters for added lines, and non-added for removed lines
+      if ((line.type === 'added' && type === 'removed') || (line.type === 'removed' && type === 'added')) {
+        return null;
+      }
+      return (
+        <span key={`char-${index}`} className={`${charStyles[type]}`}>
+          {part.value}
+        </span>
+      );
+    });
+  } else {
+    // Render ORIGINAL content with syntax highlighting
+    return (
+      <SyntaxHighlighter
+        language={language}
+        style={customStyle}
+        wrapLines={true} // Enable wrapping within the highlighter
+        PreTag="span" // Use span to avoid block layout issues
+        CodeTag="span"
+      >
+        {/* Ensure we render the original content */}
+        {line.content || ''}
+      </SyntaxHighlighter>
+    );
   }
 };
 
 const DiffViewer = ({
   fileName,
-  diffContent,
+  // Receive line diff patch string (generated from placeholders)
+  lineDiffPatch,
+  // Receive ORIGINAL content A and B
+  originalContentA,
+  originalContentB,
   versions = [],
   onVersionChange,
   selectedVersion,
   secondSelectedVersion,
-  language = 'plaintext' // Receive language prop, default to plaintext
+  language = 'plaintext'
 }) => {
-  const contextLines = 3; // Increase context slightly for better overview
 
-  // Define allLines here so it's accessible by multiple useMemo hooks
-  const allLines = useMemo(() => {
-    if (!diffContent || typeof diffContent !== 'string') {
-      return [];
-    }
-    const lines = diffContent.split('\n');
-    // Handle potential trailing newline causing an empty string element
-    if (lines.length > 0 && lines[lines.length - 1] === '') {
-      lines.pop();
-    }
-    return lines;
-  }, [diffContent]);
+  // Split original content into lines for lookup (memoized)
+  const originalLinesA = useMemo(() => originalContentA?.split('\n') || [], [originalContentA]);
+  const originalLinesB = useMemo(() => originalContentB?.split('\n') || [], [originalContentB]);
 
+  // Parse the patch string and process lines, mapping to ORIGINAL content
   const processedLines = useMemo(() => {
-    // Now use the pre-calculated allLines
-    if (allLines.length === 0) {
+    // Ensure original content is available for mapping lines
+    if (!lineDiffPatch || !originalContentA || !originalContentB) {
+      console.log("ProcessedLines: Missing patch or original content.");
+      // Display original B if no diff patch but content exists
+      if (originalContentB && !lineDiffPatch) {
+         return originalLinesB.map((line, index) => ({
+            key: `orig-b-${index}`,
+            type: 'context',
+            content: line, // Original content
+            lineNumber: index + 1,
+            charDiff: null,
+         }));
+      }
       return [];
     }
 
-    // 1. Identify change indices
-    const changeIndices = allLines
-      .map((line, index) => (line.startsWith('+') || line.startsWith('-') ? index : -1))
-      .filter(index => index !== -1);
-
-    // If no changes, return empty (message handled outside)
-    if (changeIndices.length === 0) {
-        // Check if there was actual content or just empty lines
-        const hasMeaningfulContent = allLines.some(line => line.trim() !== '');
-        if (hasMeaningfulContent) {
-             // Indicate no changes were found, but let the outer component handle the message
-             return [];
-        } else {
-            // If it was just empty lines or whitespace, treat as empty diff
-            return [];
-        }
-    }
-
-
-    // 2. Determine all indices to show (changes + context)
-    const indicesToShow = new Set();
-    changeIndices.forEach(changeIndex => {
-      const start = Math.max(0, changeIndex - contextLines);
-      const end = Math.min(allLines.length - 1, changeIndex + contextLines);
-      for (let i = start; i <= end; i++) {
-        indicesToShow.add(i);
+    try {
+      const diffs = parsePatch(lineDiffPatch);
+      if (!diffs || diffs.length === 0) {
+        console.log("ProcessedLines: Parsed patch is empty (potentially no changes).");
+        // If patch is empty, it means no changes based on placeholder comparison
+        return originalLinesB.map((line, index) => ({
+           key: `nochange-b-${index}`,
+           type: 'context',
+           content: line, // Original content
+           lineNumber: index + 1,
+           charDiff: null,
+        }));
       }
-    });
 
-    // 3. Build linesToShow array and add separators
-    const linesToShow = [];
-    let lastShownIndex = -1;
+      const allLines = [];
+      let lineKeyCounter = 0;
 
-    for (let i = 0; i < allLines.length; i++) {
-      if (indicesToShow.has(i)) {
-        // This line should be shown
-        const line = allLines[i];
-        let lineType = 'context';
-        let content = line;
-        let keyPrefix = 'ctx'; // Default key prefix
+      diffs.forEach((diff, diffIndex) => {
+        diff.hunks.forEach((hunk, hunkIndex) => {
+          let oldLineNum = hunk.oldStart; // Line number in original A (1-based)
+          let newLineNum = hunk.newStart; // Line number in original B (1-based)
 
-        if (line.startsWith('+')) {
-          lineType = 'added';
-          content = line.substring(1);
-          keyPrefix = 'add';
-        } else if (line.startsWith('-')) {
-          lineType = 'removed';
-          content = line.substring(1);
-          keyPrefix = 'rem';
-        } else if (line.startsWith(' ')) {
-          // Some diff formats add a space for context lines
-          content = line.substring(1);
-        }
-        // else: context line without leading space
+          const hunkLines = [];
+          // First pass: Collect lines, map to original content, store line numbers
+          for (let i = 0; i < hunk.lines.length; i++) {
+             const patchLine = hunk.lines[i];
+             const lineType = patchLine.startsWith('+') ? 'added' :
+                              patchLine.startsWith('-') ? 'removed' : 'context';
+             let originalLineContent = '';
+             let displayLineNumber = null;
 
-        linesToShow.push({
-          type: lineType,
-          content: content,
-          originalLineNumber: i + 1, // Use original index + 1 for line number
-          key: `${keyPrefix}-${i}` // Unique key based on type prefix and original index
+             if (lineType === 'context') {
+                // Context line exists in both A and B
+                originalLineContent = originalLinesA[oldLineNum - 1] ?? ''; // Use A's content
+                displayLineNumber = newLineNum; // Show B's line number
+                oldLineNum++;
+                newLineNum++;
+             } else if (lineType === 'removed') {
+                // Removed line exists only in A
+                originalLineContent = originalLinesA[oldLineNum - 1] ?? '';
+                displayLineNumber = oldLineNum; // Show A's line number
+                oldLineNum++;
+             } else if (lineType === 'added') {
+                // Added line exists only in B
+                originalLineContent = originalLinesB[newLineNum - 1] ?? '';
+                displayLineNumber = newLineNum; // Show B's line number
+                newLineNum++;
+             }
+
+             const lineObj = {
+                key: `line-${diffIndex}-${hunkIndex}-${lineKeyCounter++}`,
+                type: lineType,
+                content: originalLineContent, // Store ORIGINAL content
+                lineNumber: displayLineNumber,
+                charDiff: null, // Placeholder for character diff result
+             };
+             hunkLines.push(lineObj);
+          }
+
+          // Second pass: Perform character diff on ORIGINAL content of adjacent removed/added lines
+          for (let i = 0; i < hunkLines.length - 1; i++) {
+             const currentLine = hunkLines[i];
+             const nextLine = hunkLines[i + 1];
+
+             // Check for adjacent removed and added lines identified by the placeholder patch
+             if (currentLine.type === 'removed' && nextLine.type === 'added') {
+                // Perform diffChars on the ORIGINAL content stored in the line objects
+                const charResult = diffChars(currentLine.content, nextLine.content);
+                // Store the char diff result (based on original content) on both lines
+                currentLine.charDiff = charResult;
+                nextLine.charDiff = charResult;
+                // Optional: Skip the next line in the outer loop since we've processed it as a pair
+                // i++; // Be careful with loop modification
+             }
+          }
+          allLines.push(...hunkLines);
         });
-        lastShownIndex = i;
-      } else {
-        // This line is hidden. Check if we need a separator.
-        // Add separator if the *previous* line was shown (lastShownIndex === i - 1)
-        // and if this isn't the very first line (i > 0)
-        // and if the last item added wasn't already a separator.
-        if (lastShownIndex === i - 1 && i > 0) {
-           if (!linesToShow.length || linesToShow[linesToShow.length - 1].type !== 'separator') {
-               // Check ahead if there are more lines to be shown later
-               let hasMoreLinesToShow = false;
-               for (let j = i + 1; j < allLines.length; j++) {
-                   if (indicesToShow.has(j)) {
-                       hasMoreLinesToShow = true;
-                       break;
-                   }
-               }
-               // Only add separator if there are more lines to show after this gap
-               if (hasMoreLinesToShow) {
-                   linesToShow.push({ type: 'separator', key: `sep-${i}` });
-               }
-           }
-        }
-        // Update lastShownIndex only when a line is shown.
-        // If a line is hidden, lastShownIndex remains the index of the last shown line.
-      }
+      });
+
+      console.log("Processed lines count (mapped to original):", allLines.length);
+      return allLines;
+
+    } catch (error) {
+      console.error("Error parsing diff patch or mapping lines:", error);
+      // Display error message as content
+      return [{
+         key: 'error-parse',
+         type: 'context', // Render as normal text
+         content: `Error processing diff: ${error.message}`,
+         lineNumber: 1,
+         charDiff: null,
+      }];
     }
+  // Depend on patch and ORIGINAL content for processing
+  }, [lineDiffPatch, originalContentA, originalContentB, originalLinesA, originalLinesB]);
 
-    return linesToShow;
-  // Update dependency array to include allLines
-  }, [allLines, contextLines]);
-
-
-  // Add debugging to see what's happening
+  // Add debugging
   useEffect(() => {
-    console.log('DiffViewer received content:', {
-      type: typeof diffContent,
-      length: diffContent?.length || 0,
-      content: diffContent?.substring(0, 100) || 'empty'
+    console.log('DiffViewer received data:', {
+      lineDiffPatchProvided: !!lineDiffPatch,
+      originalALength: originalContentA?.length || 0,
+      originalBLength: originalContentB?.length || 0,
     });
-  }, [diffContent]);
+     // console.log('Processed Lines (first 10):', processedLines.slice(0, 10)); // Debugging
+  }, [lineDiffPatch, originalContentA, originalContentB, processedLines]);
 
-  // Add a message if no differences were found but content exists
-  // Use the pre-calculated allLines
-  const hasMeaningfulContent = useMemo(() => allLines.some(line => line.trim() !== ''), [allLines]);
-  // Update dependency array for noChangesFound
-  const noChangesFound = useMemo(() => hasMeaningfulContent && processedLines.length === 0 && !processedLines.some(l => l.type === 'added' || l.type === 'removed'), [hasMeaningfulContent, processedLines]);
-
-  const hasChanges = useMemo(() => processedLines.some(l => l.type === 'added' || l.type === 'removed'), [processedLines]);
-  const hasOriginalContent = useMemo(() => diffContent && typeof diffContent === 'string' && diffContent.length > 0, [diffContent]);
-
+  // Update checks to use processedLines and lineDiffPatch
+  const hasMeaningfulContent = useMemo(() => originalContentA || originalContentB, [originalContentA, originalContentB]);
+  // Check if the processed lines contain any added or removed lines
+  const hasChanges = useMemo(() => processedLines.some(p => p.type === 'added' || p.type === 'removed'), [processedLines]);
+  // No changes if content exists, patch data exists, but no added/removed lines found after processing
+  const noChangesFound = useMemo(() => hasMeaningfulContent && lineDiffPatch && !hasChanges, [hasMeaningfulContent, lineDiffPatch, hasChanges]);
 
   return (
-    // Force full width and height with absolute sizing strategy
+    // Force full width and height
     <div className="w-full h-full min-h-full flex flex-col bg-gray-950 font-mono text-sm" style={{ minWidth: '100%' }}>
-      {/* Header with file name and version dropdowns */}
+      {/* Header */}
       <div className="sticky top-0 bg-gray-900 px-4 sm:px-6 py-3 border-b border-gray-800 text-gray-300 z-10 flex-shrink-0 w-full flex justify-between items-center">
         <div>{fileName || 'File Comparison'}</div>
-        
+
         {versions.length > 1 && (
           <div className="flex items-center space-x-4">
-            {/* First dropdown - Compare */}
+            {/* Dropdowns remain the same */}
             <div className="flex items-center">
               <label htmlFor="compare-select" className="mr-2 text-xs text-gray-400">
                 Compare:
               </label>
-              <select 
+              <select
                 id="compare-select"
                 className="bg-gray-800 border border-gray-700 text-gray-300 text-sm rounded py-1 px-2 focus:ring-blue-500 focus:border-blue-500 font-sans appearance-none cursor-pointer hover:bg-gray-750"
                 value={selectedVersion || ''}
                 onChange={(e) => onVersionChange('first', e.target.value)}
                 style={{
-                  WebkitAppearance: "none",
-                  MozAppearance: "none",
+                  WebkitAppearance: "none", MozAppearance: "none",
                   backgroundImage: "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgb(156, 163, 175)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")",
-                  backgroundRepeat: "no-repeat",
-                  backgroundPosition: "right 0.5rem center",
-                  backgroundSize: "1.5em 1.5em",
-                  paddingRight: "2.5rem"
+                  backgroundRepeat: "no-repeat", backgroundPosition: "right 0.5rem center", backgroundSize: "1.5em 1.5em", paddingRight: "2.5rem"
                 }}
               >
                 {versions.map((version) => (
@@ -201,25 +250,19 @@ const DiffViewer = ({
                 ))}
               </select>
             </div>
-            
-            {/* Second dropdown - With */}
             <div className="flex items-center">
               <label htmlFor="with-select" className="mr-2 text-xs text-gray-400">
                 With:
               </label>
-              <select 
+              <select
                 id="with-select"
                 className="bg-gray-800 border border-gray-700 text-gray-300 text-sm rounded py-1 px-2 focus:ring-blue-500 focus:border-blue-500 font-sans appearance-none cursor-pointer hover:bg-gray-750"
                 value={secondSelectedVersion || ''}
                 onChange={(e) => onVersionChange('second', e.target.value)}
-                style={{
-                  WebkitAppearance: "none",
-                  MozAppearance: "none",
+                 style={{
+                  WebkitAppearance: "none", MozAppearance: "none",
                   backgroundImage: "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgb(156, 163, 175)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")",
-                  backgroundRepeat: "no-repeat",
-                  backgroundPosition: "right 0.5rem center",
-                  backgroundSize: "1.5em 1.5em",
-                  paddingRight: "2.5rem"
+                  backgroundRepeat: "no-repeat", backgroundPosition: "right 0.5rem center", backgroundSize: "1.5em 1.5em", paddingRight: "2.5rem"
                 }}
               >
                 {versions.map((version) => (
@@ -232,94 +275,54 @@ const DiffViewer = ({
           </div>
         )}
       </div>
-      
-      {/* Add a warning if the original diff had no markers */}
-      {diffContent && !hasChanges && (
-        <div className="bg-yellow-800/20 p-2 border-l-4 border-yellow-600 text-yellow-200 mb-2 flex-shrink-0 w-full">
-          Invalid diff format or identical files selected.
-        </div>
-      )}
 
       {/* Add a message if no differences were found */}
       {noChangesFound && (
          <div className="bg-green-800/20 p-4 border-l-4 border-green-600 text-green-200 m-4 flex-shrink-0 w-auto self-start">
-           No differences found between the selected versions.
+           No differences found between the selected versions (based on structure).
          </div>
       )}
 
       {/* Render the processed lines */}
-      {processedLines.length > 0 && (
-        <div className="flex-1 min-h-[calc(100%-60px)] overflow-y-auto w-full" style={{ minWidth: '100%' }}> {/* Removed padding here, add per line */}
-          {processedLines.map((line) => {
-            if (line.type === 'separator') {
+      {processedLines.length > 0 ? (
+        <div className="flex-1 min-h-[calc(100%-60px)] overflow-y-auto w-full" style={{ minWidth: '100%' }}>
+          {/* Use a container for lines */}
+          <div className="p-4">
+            {processedLines.map((line) => {
+              // Define styles based on line type
+              const lineStyles = {
+                added: 'bg-green-900 bg-opacity-20 text-green-100',
+                removed: 'bg-red-900 bg-opacity-20 text-red-100',
+                context: 'text-gray-400',
+              };
+              const currentLineStyle = lineStyles[line.type];
+              const linePrefix = line.type === 'added' ? '+' : line.type === 'removed' ? '-' : ' ';
+
               return (
-                // Corrected: spans are now inside the div
-                <div key={line.key} className="flex items-center bg-gray-800 h-6 px-4 w-full">
-                  <span className="w-10 text-right text-gray-600 select-none flex-shrink-0 mr-2">...</span>
-                  <span className="text-gray-600 select-none">...</span>
+                // Render each line as a block, preserving whitespace within
+                <div
+                  key={line.key}
+                  className={`flex whitespace-pre-wrap break-all ${currentLineStyle}`}
+                >
+                  {/* Line Number */}
+                  <span className="w-10 text-right pr-2 text-gray-500 select-none flex-shrink-0">{line.lineNumber || ''}</span>
+                  {/* Line Prefix */}
+                  <span className="w-4 pl-1 select-none flex-shrink-0">{linePrefix}</span>
+                  {/* Line Content (now rendering ORIGINAL content) */}
+                  <span className="flex-1 pl-2">
+                    {renderLineContent(line, language)}
+                  </span>
                 </div>
               );
-            }
-
-            // Define styles based on line type
-            const styles = {
-              added: {
-                bgColor: 'bg-green-600 bg-opacity-10',
-                prefix: '+',
-                prefixColor: 'text-green-500',
-                lineNumColor: 'text-gray-600', // Dim line number for added
-              },
-              removed: {
-                bgColor: 'bg-red-600 bg-opacity-10',
-                prefix: '-',
-                prefixColor: 'text-red-500',
-                lineNumColor: 'text-gray-600', // Dim line number for removed
-              },
-              context: {
-                bgColor: '', // No background for context
-                prefix: ' ', // Space for alignment
-                prefixColor: 'text-gray-600', // Dim prefix
-                lineNumColor: 'text-gray-600', // Dim line number for context
-              },
-            };
-
-            const currentStyle = styles[line.type];
-            const lineContent = line.content || ' ';
-
-            return (
-              // Apply background color to the whole line container and make it full width
-              <div key={line.key} className={`flex items-start ${currentStyle.bgColor} hover:bg-gray-700/50 w-full px-4`}> {/* Added px-4 */}
-                 {/* Line number column */}
-                 <span className={`w-10 text-right ${currentStyle.lineNumColor} select-none flex-shrink-0 mr-2 pt-px`}>
-                   {line.originalLineNumber}
-                 </span>
-                {/* Diff symbol column */}
-                <span className={`w-4 ${currentStyle.prefixColor} select-none flex-shrink-0 text-center pt-px`}> {/* Adjusted width */}
-                  {currentStyle.prefix}
-                </span>
-                {/* Code content - Use SyntaxHighlighter */}
-                <div className="flex-1 whitespace-pre-wrap break-words min-w-0 pl-2"> {/* Added pl-2 */}
-                  <SyntaxHighlighter
-                    language={language}
-                    style={customStyle}
-                    wrapLines={true}
-                    lineProps={{style: { whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}}
-                    PreTag="div"
-                    // Apply context text color if needed
-                    CodeTag={({ children, ...props }) => <span {...props} className={`text-sm ${line.type === 'context' ? 'text-gray-400' : ''}`}>{children}</span>}
-                  >
-                    {lineContent}
-                  </SyntaxHighlighter>
-                </div>
-              </div>
-            );
-          })}
+            })}
+          </div>
         </div>
+      ) : (
+         /* Fallback if no data initially OR if there are no differences to show */
+         !noChangesFound && ( // Only show loading if we haven't already determined there are no changes
+            <div className="p-4 text-gray-600">Loading comparison or no content available...</div>
+         )
       )}
-       {/* Fallback if diffContent is empty/invalid initially */}
-       {!hasOriginalContent && (
-         <div className="p-4 text-gray-600">Loading diff or no content available...</div>
-       )}
     </div>
   );
 };

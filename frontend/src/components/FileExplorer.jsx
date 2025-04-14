@@ -129,7 +129,14 @@ const FileExplorer = () => {
   const [fileSystem, setFileSystem] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
   const [expandedFolders, setExpandedFolders] = useState(new Set());
-  const [diffContent, setDiffContent] = useState('');
+  // Update comparisonData state to use lineDiffPatch
+  const [comparisonData, setComparisonData] = useState({
+    lineDiffPatch: null, // Changed from charDiffResult, initialize as null
+    originalA: '',
+    originalB: '',
+    isLoading: false, // Add loading state
+    error: null, // Add error state
+  });
   const [supabaseFilesData, setSupabaseFilesData] = useState([]); // Store the raw data from Supabase
   const [availableVersions, setAvailableVersions] = useState([]); // Available versions for comparison
   const [selectedVersionId, setSelectedVersionId] = useState(null); // First selected version for comparison
@@ -140,25 +147,25 @@ const FileExplorer = () => {
   // Format date from version number (YYYYMMDD format)
   const formatVersionDate = (versionNumber) => {
     if (!versionNumber) return 'Unknown';
-    
+
     const versionStr = versionNumber.toString();
     // Check if we have at least 8 digits for YYYYMMDD
     if (versionStr.length >= 8) {
       const year = versionStr.substring(0, 4);
       const month = versionStr.substring(4, 6);
       const day = versionStr.substring(6, 8);
-      
+
       // Create date object
       const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-      
+
       // Format date
-      return date.toLocaleDateString(undefined, { 
-        year: 'numeric', 
-        month: 'short', 
-        day: 'numeric' 
+      return date.toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
       });
     }
-    
+
     return versionStr; // Return as is if can't parse
   };
 
@@ -219,7 +226,7 @@ const FileExplorer = () => {
         // Use the original base filename for grouping to handle future versions
         const baseFileName = `${baseName}.${extension}`;
         const fullPath = dirPath ? `${dirPath}/${baseFileName}` : baseFileName;
-        
+
         // Extract the display name (just the actual filename part)
         const displayName = extractOriginalFilename(baseFileName);
 
@@ -236,7 +243,7 @@ const FileExplorer = () => {
       } else {
         // It's a base file (no version)
         const fullPath = dirPath ? `${dirPath}/${fileName}` : fileName;
-        
+
         // Extract the display name for non-versioned files too
         const displayName = extractOriginalFilename(fileName);
 
@@ -287,12 +294,12 @@ const FileExplorer = () => {
         }
         currentParent = lookup[id];
       }
-      
+
       // Handle the file part specially with display name
       const filePart = pathParts[pathParts.length - 1];
       currentPath += (currentPath ? '/' : '') + filePart;
       const id = currentPath;
-      
+
       if (!lookup[id]) {
         // Create new file node with display name
         const newItem = {
@@ -319,20 +326,21 @@ const FileExplorer = () => {
     setAvailableVersions([]); // Reset versions when selecting a new file
     setSelectedVersionId(null);
     setSecondSelectedVersionId(null);
-    setDiffContent(''); // Clear previous diff
+    // Reset comparison data and set loading state
+    setComparisonData({ lineDiffPatch: null, originalA: '', originalB: '', isLoading: true, error: null });
     setSelectedFileLanguage('plaintext'); // Reset language
 
     if (selectedFileItem && selectedFileItem.type === 'file') {
       // Determine language based on display name
       const language = getLanguageFromFileName(selectedFileItem.displayName || selectedFileItem.name);
-      setSelectedFileLanguage(language);
+      setSelectedFileLanguage(language); // Store detected language
       console.log(`Detected language: ${language} for file: ${selectedFileItem.displayName || selectedFileItem.name}`);
 
       // Get the actual file path from the fileData if it exists, otherwise use the path property
       const currentFilePath = selectedFileItem.fileData?.name || selectedFileItem.path;
       // Use the original name with version for comparison logic, but display name for UI
       const currentFileName = selectedFileItem.originalName || selectedFileItem.fileData?.originalName || selectedFileItem.name;
-      
+
       console.log('Selected file details:', {
         displayName: selectedFileItem.displayName || selectedFileItem.name,
         originalName: currentFileName,
@@ -344,7 +352,53 @@ const FileExplorer = () => {
       const versionRegex = VERSION_REGEX;
       const versionMatch = currentFileName.match(versionRegex);
 
-      // Check if this is a versioned file (has -v123456 in the name)
+      // --- Logic inside version handling ---
+      const performComparison = async (fileAPath, fileBPath) => {
+        console.log(`Performing comparison between: ${fileAPath} and ${fileBPath} with language ${language}`);
+        // Set loading state before async call
+        setComparisonData(prev => ({ ...prev, isLoading: true, error: null }));
+        try {
+          const result = await compareSupabaseFiles(
+            'gemini-files',
+            fileAPath,
+            fileBPath,
+            language // Pass the detected language for normalization
+            // contextLines parameter is optional, defaults to 3 in compareSupabaseFiles
+          );
+          if (result) {
+            // Update state with the correct structure (lineDiffPatch)
+            setComparisonData({
+              lineDiffPatch: result.lineDiffPatch,
+              originalA: result.originalA,
+              originalB: result.originalB,
+              isLoading: false,
+              error: null
+            });
+          } else {
+            // Handle comparison error
+            setComparisonData({
+              lineDiffPatch: null,
+              originalA: '',
+              originalB: '',
+              isLoading: false,
+              error: 'Error during comparison.'
+            });
+          }
+        } catch (err) {
+          console.error("Error in performComparison:", err);
+          setComparisonData({
+            lineDiffPatch: null,
+            originalA: '',
+            originalB: '',
+            isLoading: false,
+            error: `Comparison failed: ${err.message}`
+          });
+        }
+        // Set selected versions after comparison attempt
+        setSelectedVersionId(fileAPath); // Assuming A is first dropdown
+        setSecondSelectedVersionId(fileBPath); // Assuming B is second dropdown
+      };
+
       if (versionMatch) {
         // It's a versioned file
         const baseName = versionMatch[1];
@@ -352,7 +406,7 @@ const FileExplorer = () => {
         const extension = versionMatch[3];
         const baseFileName = baseName;
         const fileExtension = extension;
-        
+
         console.log('Parsed version details:', {
           baseName,
           versionNumber,
@@ -362,13 +416,13 @@ const FileExplorer = () => {
 
         // Find ALL files that could be versions of this file
         let allVersions = [];
-        
+
         // First look for the base file without version
         const baseFile = supabaseFilesData.find(file => {
           const name = file.name.split('/').pop();
           return name === `${baseFileName}.${fileExtension}`;
         });
-        
+
         if (baseFile) {
           console.log('Found base file:', baseFile.name);
           allVersions.push({
@@ -377,17 +431,17 @@ const FileExplorer = () => {
             path: baseFile.name
           });
         }
-        
+
         // Then find all versioned files
         supabaseFilesData.forEach(file => {
           const fileName = file.name.split('/').pop();
           const match = fileName.match(versionRegex);
-          
+
           if (match) {
             const thisBaseName = match[1];
             const thisVersion = parseInt(match[2]);
             const thisExtension = match[3];
-            
+
             if (thisBaseName === baseFileName && thisExtension === fileExtension) {
               console.log('Found matching version:', fileName, 'Version:', thisVersion);
               allVersions.push({
@@ -398,18 +452,18 @@ const FileExplorer = () => {
             }
           }
         });
-        
+
         console.log('All matching versions found:', allVersions.length);
-        
+
         if (allVersions.length > 1) { // Need at least 2 versions to compare
           // Sort versions with newest first
           allVersions.sort((a, b) => b.version - a.version);
-          
+
           console.log('Sorted versions:', allVersions.map(v => ({
             path: v.path,
             version: v.version
           })));
-          
+
           // Prepare version options for dropdown
           const versionOptions = allVersions.map((v, index) => {
             let label;
@@ -420,7 +474,7 @@ const FileExplorer = () => {
               // Older versions with date
               label = formatVersionDate(v.version);
             }
-            
+
             return {
               id: v.path,
               version: v.version,
@@ -428,82 +482,58 @@ const FileExplorer = () => {
               path: v.path
             };
           });
-          
+
           setAvailableVersions(versionOptions);
-          
+
           // Get the index of the current version
-          const currentIndex = allVersions.findIndex(v => 
+          const currentIndex = allVersions.findIndex(v =>
             v.path === currentFilePath || v.version === versionNumber
           );
-          
+
           // Default comparison is with the previous version
           if (currentIndex === 0 && allVersions.length > 1) {
             // We're the newest version, compare with the second newest
             const previousVersion = allVersions[1];
             console.log('Will compare newest with second newest:', previousVersion.path);
-            
-            const diff = await compareSupabaseFiles(
-              'gemini-files',
-              previousVersion.path,
-              currentFilePath
-            );
-            
-            setDiffContent(diff || `No differences found between current version and v${previousVersion.version}`);
-            setSelectedVersionId(currentFilePath); // Set current file as first dropdown
-            setSecondSelectedVersionId(previousVersion.path); // Set previous version as second dropdown
+
+            await performComparison(previousVersion.path, currentFilePath); // Compare previous (A) with current (B)
           } else if (currentIndex > 0) {
             // We're not the newest, compare with the next newer version
             const newerVersion = allVersions[currentIndex - 1];
             console.log('Will compare with newer version:', newerVersion.path);
-            
-            const diff = await compareSupabaseFiles(
-              'gemini-files',
-              currentFilePath,
-              newerVersion.path
-            );
-            
-            setDiffContent(diff || `No differences found between current version and v${newerVersion.version}`);
-            setSelectedVersionId(currentFilePath);
-            setSecondSelectedVersionId(newerVersion.path);
+
+            await performComparison(currentFilePath, newerVersion.path); // Compare current (A) with newer (B)
           } else {
             // We couldn't find our version in the list, fall back to comparing with newest
             console.log('Current version not found in list, falling back to newest vs. second newest');
             const [newest, secondNewest] = allVersions;
-            
-            const diff = await compareSupabaseFiles(
-              'gemini-files',
-              secondNewest.path,
-              newest.path
-            );
-            
-            setDiffContent(diff || `Comparing latest version (v${newest.version}) with previous (v${secondNewest.version})`);
-            setSelectedVersionId(newest.path);
-            setSecondSelectedVersionId(secondNewest.path);
+
+            await performComparison(secondNewest.path, newest.path); // Compare second newest (A) with newest (B)
           }
         } else {
-          setDiffContent('Need at least two versions to compare. This appears to be the only version.');
+          setComparisonData({ lineDiffPatch: null, originalA: '', originalB: '', isLoading: false, error: 'Need at least two versions to compare. This appears to be the only version.' });
         }
       } else {
         // It's a base file (has no version suffix)
         const parts = currentFileName.split('.');
         const fileExtension = parts.pop();
         const baseFileName = parts.join('.');
-        
+
         console.log('Base file detected:', {
           baseFileName,
           fileExtension
         });
-        
+
         // Look for any versioned files with a simpler, more direct approach
         const versionRegex = new RegExp(`^(${baseFileName})-v(\\d+)\\.(${fileExtension})$`);
         console.log('Using regex pattern for versions:', versionRegex.toString());
-        
+
         const versionedFiles = [];
-        
+
         supabaseFilesData.forEach(file => {
           const fileName = file.name.split('/').pop();
           const match = fileName.match(versionRegex);
-          
+
           if (match) {
             const version = parseInt(match[2]);
             console.log('Found matching versioned file:', fileName, 'Version:', version);
@@ -514,13 +544,13 @@ const FileExplorer = () => {
             });
           }
         });
-        
+
         console.log('Versioned files found:', versionedFiles.length);
-        
+
         if (versionedFiles.length > 0) {
           // Find the newest version
           versionedFiles.sort((a, b) => b.version - a.version);
-          
+
           // Prepare version options for dropdown - all versioned files
           const versionOptions = versionedFiles.map((v, index) => {
             let label;
@@ -531,7 +561,7 @@ const FileExplorer = () => {
               // Older versions with date
               label = formatVersionDate(v.version);
             }
-            
+
             return {
               id: v.path,
               version: v.version,
@@ -539,67 +569,86 @@ const FileExplorer = () => {
               path: v.path
             };
           });
-          
+
           setAvailableVersions(versionOptions);
           const newestVersion = versionedFiles[0];
-          
+
           console.log('Using newest version for comparison:', newestVersion.path);
-          
-          // Compare base file with the newest version
-          const diff = await compareSupabaseFiles(
-            'gemini-files',
-            currentFilePath,
-            newestVersion.path
-          );
-          
-          setDiffContent(diff || `Comparing base file with v${newestVersion.version}`);
-          setSelectedVersionId(currentFilePath);
-          setSecondSelectedVersionId(newestVersion.path);
+
+          await performComparison(currentFilePath, newestVersion.path); // Compare base (A) with newest (B)
         } else {
-          setDiffContent('This is the only version of the file. No comparison available.');
+          setComparisonData({ lineDiffPatch: null, originalA: '', originalB: '', isLoading: false, error: 'This is the only version of the file. No comparison available.' });
         }
       }
     } else {
-      setDiffContent('');
+      // Folder selected or selection cleared
+      setComparisonData({ lineDiffPatch: null, originalA: '', originalB: '', isLoading: false, error: null });
     }
-  }, [supabaseFilesData, compareSupabaseFiles]);
+  // Pass language dependency
+  }, [supabaseFilesData, selectedFileLanguage]); // Removed compareSupabaseFiles from deps as it's an import
 
   const handleVersionChange = useCallback(async (dropdown, versionId) => {
     console.log(`Selected version for ${dropdown} dropdown:`, versionId);
-    
-    // Update the appropriate state based on which dropdown changed
+
+    let firstId = selectedVersionId;
+    let secondId = secondSelectedVersionId;
+
     if (dropdown === 'first') {
+      firstId = versionId;
       setSelectedVersionId(versionId);
-    } else if (dropdown === 'second') {
+    } else {
+      secondId = versionId;
       setSecondSelectedVersionId(versionId);
     }
-    
-    // Only proceed if we have both versions selected
-    if (selectedFile && versionId) {
-      const firstVersionId = dropdown === 'first' ? versionId : selectedVersionId;
-      const secondVersionId = dropdown === 'second' ? versionId : secondSelectedVersionId;
-      
-      // Make sure both versions are selected
-      if (firstVersionId && secondVersionId) {
-        // Find the version details
-        const firstVersion = availableVersions.find(v => v.id === firstVersionId);
-        const secondVersion = availableVersions.find(v => v.id === secondVersionId);
-        
-        if (firstVersion && secondVersion) {
-          console.log(`Comparing ${firstVersion.label} with ${secondVersion.label}`);
-          
-          // Compare the two selected versions
-          const diff = await compareSupabaseFiles(
+
+    if (selectedFile && firstId && secondId) {
+      const firstVersion = availableVersions.find(v => v.id === firstId);
+      const secondVersion = availableVersions.find(v => v.id === secondId);
+
+      if (firstVersion && secondVersion) {
+        console.log(`Comparing ${firstVersion.label} (${firstId}) with ${secondVersion.label} (${secondId})`);
+        // Set loading state
+        setComparisonData(prev => ({ ...prev, isLoading: true, error: null }));
+        try {
+          // Perform comparison with selected language
+          const result = await compareSupabaseFiles(
             'gemini-files',
-            firstVersionId,
-            secondVersionId
+            firstId,
+            secondId,
+            selectedFileLanguage // Pass language
           );
-          
-          setDiffContent(diff || `Comparing ${firstVersion.label} with ${secondVersion.label}`);
+          if (result) {
+            // Update state with correct structure (lineDiffPatch)
+            setComparisonData({
+              lineDiffPatch: result.lineDiffPatch,
+              originalA: result.originalA,
+              originalB: result.originalB,
+              isLoading: false,
+              error: null
+            });
+          } else {
+            setComparisonData({
+              lineDiffPatch: null,
+              originalA: '',
+              originalB: '',
+              isLoading: false,
+              error: 'Error during comparison.'
+            });
+          }
+        } catch (err) {
+          console.error("Error in handleVersionChange comparison:", err);
+          setComparisonData({
+            lineDiffPatch: null,
+            originalA: '',
+            originalB: '',
+            isLoading: false,
+            error: `Comparison failed: ${err.message}`
+          });
         }
       }
     }
-  }, [selectedFile, selectedVersionId, secondSelectedVersionId, availableVersions, compareSupabaseFiles]);
+  // Pass language dependency
+  }, [selectedFile, selectedVersionId, secondSelectedVersionId, availableVersions, selectedFileLanguage]); // Removed compareSupabaseFiles from deps
 
   const handleToggleFolder = useCallback((folderId) => {
     setExpandedFolders((prev) => {
@@ -613,10 +662,6 @@ const FileExplorer = () => {
     });
   }, []);
 
-  const currentDiff = useMemo(() => {
-    return diffContent;
-  }, [diffContent]);
-
   const handleFileUpload = async (event) => {
     const file = event.target.files[0];
     if (file) {
@@ -629,7 +674,7 @@ const FileExplorer = () => {
       const fileNameParts = file.name.split('.');
       const baseName = fileNameParts.slice(0, -1).join('.');
       const extension = fileNameParts.pop();
-      
+
       // Updated filename format to preserve original extension before version and add .txt at the end
       const newFileName = `${baseName}-v${version}.${extension}.txt`;
 
@@ -656,6 +701,23 @@ const FileExplorer = () => {
     // Clear the file input so the same file can be uploaded again
     event.target.value = null;
   };
+
+  // Determine content for DiffViewer based on loading and error states
+  const diffViewerContent = useMemo(() => {
+    if (comparisonData.isLoading) {
+      return { lineDiffPatch: null, originalA: '', originalB: '', message: 'Loading comparison...' };
+    }
+    if (comparisonData.error) {
+      return { lineDiffPatch: null, originalA: '', originalB: '', message: comparisonData.error };
+    }
+    // If not loading and no error, return the actual data (or null if no diff yet)
+    return {
+      lineDiffPatch: comparisonData.lineDiffPatch,
+      originalA: comparisonData.originalA,
+      originalB: comparisonData.originalB,
+      message: null // No specific message needed if data is present or null initially
+    };
+  }, [comparisonData]);
 
   return (
     <div className="flex h-screen bg-gray-950 text-gray-300">
@@ -699,20 +761,27 @@ const FileExplorer = () => {
               </div>
               {/* Add more inactive tabs here if implementing multi-tab */}
             </div> {/* This is the correct closing tag for the tab bar */}
-            {/* Removed the extra </div> that was here */}
 
             {/* Diff Viewer Area - Make it fill ALL available space horizontally */}
             <div className="flex-1 w-full flex flex-col min-h-0">
-              <DiffViewer
-                key={`${selectedFile.id}-${selectedVersionId}-${secondSelectedVersionId}`} // More specific key
-                diffContent={currentDiff || 'Loading comparison...'}
-                fileName={selectedFile.displayName || extractOriginalFilename(selectedFile.name)}
-                versions={availableVersions}
-                selectedVersion={selectedVersionId}
-                secondSelectedVersion={secondSelectedVersionId}
-                onVersionChange={handleVersionChange}
-                language={selectedFileLanguage} // Pass the detected language
-              />
+              {/* Conditionally render based on loading/error or pass data */}
+              {diffViewerContent.message ? (
+                 <div className="p-4 text-gray-600">{diffViewerContent.message}</div>
+              ) : (
+                <DiffViewer
+                  key={`${selectedFile.id}-${selectedVersionId}-${secondSelectedVersionId}`} // More specific key
+                  // Pass the correct prop name: lineDiffPatch
+                  lineDiffPatch={diffViewerContent.lineDiffPatch}
+                  originalContentA={diffViewerContent.originalA}
+                  originalContentB={diffViewerContent.originalB}
+                  fileName={selectedFile.displayName || extractOriginalFilename(selectedFile.name)}
+                  versions={availableVersions}
+                  selectedVersion={selectedVersionId}
+                  secondSelectedVersion={secondSelectedVersionId}
+                  onVersionChange={handleVersionChange}
+                  language={selectedFileLanguage} // Pass the detected language
+                />
+              )}
             </div>
           </>
         ) : (
