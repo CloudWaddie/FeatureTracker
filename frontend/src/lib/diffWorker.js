@@ -1,4 +1,4 @@
-import { parsePatch, diffChars } from 'diff';
+import { parsePatch } from 'diff';
 
 // Listen for messages from the main thread
 self.onmessage = (event) => {
@@ -46,12 +46,11 @@ self.onmessage = (event) => {
 
     diffs.forEach((diff, diffIndex) => {
       diff.hunks.forEach((hunk, hunkIndex) => {
-        let oldLineNum = hunk.oldStart;
-        let newLineNum = hunk.newStart;
-        let processedLinesInHunk = []; // Store lines temporarily for char diff pairing
-        let lastRemovedLineIndex = -1; // Index in processedLinesInHunk of the last removed line
+         let oldLineNum = hunk.oldStart;
+         let newLineNum = hunk.newStart;
+         let processedLinesInHunk = []; // Store lines temporarily
 
-        for (let i = 0; i < hunk.lines.length; i++) {
+         for (let i = 0; i < hunk.lines.length; i++) {
           const patchLine = hunk.lines[i];
           const lineType = patchLine.startsWith('+') ? 'added' :
                            patchLine.startsWith('-') ? 'removed' : 'context';
@@ -68,11 +67,10 @@ self.onmessage = (event) => {
               content: originalLineContent,
               lineNumber: displayLineNumber,
               charDiff: null,
-            };
-            processedLinesInHunk.push(currentLineObj);
-            lastRemovedLineIndex = -1; // Reset removed line tracking
-            oldLineNum++;
-            newLineNum++;
+             };
+             processedLinesInHunk.push(currentLineObj);
+             oldLineNum++;
+             newLineNum++;
           } else if (lineType === 'removed') {
             originalLineContent = originalLinesA[oldLineNum - 1] ?? '';
             displayLineNumber = oldLineNum; // Display old line number for removed
@@ -81,12 +79,11 @@ self.onmessage = (event) => {
               type: lineType,
               content: originalLineContent,
               lineNumber: displayLineNumber,
-              charDiff: null, // Initialize charDiff
-            };
-            processedLinesInHunk.push(currentLineObj);
-            lastRemovedLineIndex = processedLinesInHunk.length - 1; // Track this removed line
-            oldLineNum++;
-          } else if (lineType === 'added') {
+               charDiff: null,
+             };
+             processedLinesInHunk.push(currentLineObj);
+             oldLineNum++;
+           } else if (lineType === 'added') {
             originalLineContent = originalLinesB[newLineNum - 1] ?? '';
             displayLineNumber = newLineNum; // Display new line number for added
              currentLineObj = {
@@ -94,26 +91,11 @@ self.onmessage = (event) => {
               type: lineType,
               content: originalLineContent,
               lineNumber: displayLineNumber,
-              charDiff: null, // Initialize charDiff
-            };
-
-            // Attempt to pair with the last removed line
-            if (lastRemovedLineIndex !== -1) {
-              const removedLine = processedLinesInHunk[lastRemovedLineIndex];
-              // Ensure the removed line hasn't already been paired
-              if (removedLine && removedLine.type === 'removed' && !removedLine.paired) {
-                 const charDiffResult = diffChars(removedLine.content, currentLineObj.content);
-                 // Store char diff on both lines
-                 removedLine.charDiff = charDiffResult;
-                 currentLineObj.charDiff = charDiffResult;
-                 removedLine.paired = true; // Mark as paired
-                 lastRemovedLineIndex = -1; // Reset tracker
-              }
-            }
-            processedLinesInHunk.push(currentLineObj);
-            // Don't reset lastRemovedLineIndex here, allow consecutive adds after a remove
-            newLineNum++;
-          }
+               charDiff: null,
+             };
+             processedLinesInHunk.push(currentLineObj);
+             newLineNum++;
+           }
         }
         // Add processed lines for this hunk to the main list
         allLines.push(...processedLinesInHunk);

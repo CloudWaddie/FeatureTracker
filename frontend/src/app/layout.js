@@ -28,8 +28,15 @@ export default async function RootLayout({ children }) {
     data: { session },
   } = await supabase.auth.getSession();
 
-  const supabaseUrl = 'https://mccbekclrcnckrzfdoza.supabase.co';
-  const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1jY2Jla2NscmNuY2tyemZkb3phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMxNDczNDAsImV4cCI6MjA1ODcyMzM0MH0.7HSl_zdjOrfcQFLFYFES-t0KGaK2zRAnt1MDP3_Dpqk';
+  // Read Supabase URL and Key from environment variables
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    console.error("Missing Supabase URL or Anon Key in environment variables for RootLayout.");
+    // Handle the error appropriately, maybe render an error page or throw
+    // For now, just log and potentially let SupabaseProvider handle the error downstream
+  }
 
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>

@@ -14,6 +14,7 @@ export default function ProfilePage() {
   const [username, setUsername] = useState('');
   const [website, setWebsite] = useState('');
   const [avatar_url, setAvatarUrl] = useState('');
+  const [geminiApiKey, setGeminiApiKey] = useState(''); // Add state for Gemini API Key
   
   useEffect(() => {
     async function getProfile() {
@@ -27,7 +28,8 @@ export default function ProfilePage() {
         
         const { data, error } = await supabase
           .from('profiles')
-          .select('full_name, username, website, avatar_url')
+          // Select the new gemini_api_key field as well
+          .select('full_name, username, website, avatar_url, gemini_api_key')
           .eq('id', session.user.id)
           .single();
           
@@ -38,6 +40,7 @@ export default function ProfilePage() {
           setUsername(data.username || '');
           setWebsite(data.website || '');
           setAvatarUrl(data.avatar_url || '');
+          setGeminiApiKey(data.gemini_api_key || ''); // Set the Gemini API key state
         }
       } catch (error) {
         console.error('Error loading profile:', error);
@@ -63,6 +66,7 @@ export default function ProfilePage() {
           username,
           website,
           avatar_url,
+          gemini_api_key: geminiApiKey, // Include Gemini API key in the upsert
           updated_at: new Date().toISOString(),
         });
         
@@ -124,7 +128,20 @@ export default function ProfilePage() {
             onChange={(e) => setWebsite(e.target.value)}
           />
         </div>
-        
+
+        {/* Add Gemini API Key input field */}
+        <div className="form-group">
+          <label htmlFor="geminiApiKey">Gemini API Key</label>
+          <input
+            id="geminiApiKey"
+            type="password" // Use password type to obscure the key
+            value={geminiApiKey}
+            onChange={(e) => setGeminiApiKey(e.target.value)}
+            placeholder="Enter your Google AI Studio API Key"
+          />
+           <p className="text-xs text-gray-500 mt-1">Your key is stored securely and only used for summarization.</p>
+        </div>
+
         <button type="submit" disabled={loading}>
           {loading ? 'Loading...' : 'Update Profile'}
         </button>

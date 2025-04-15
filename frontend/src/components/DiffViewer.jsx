@@ -143,8 +143,71 @@ const DiffViewer = ({
 }) => {
   const [processedLines, setProcessedLines] = useState([]);
    const [isLoading, setIsLoading] = useState(false);
-   const [error, setError] = useState(null);
-   const workerRef = useRef(null);
+  const [error, setError] = useState(null);
+  const workerRef = useRef(null);
+  const [summaryText, setSummaryText] = useState(''); // State for the summary
+  const [summaryStatus, setSummaryStatus] = useState(''); // State for the status message (retrieved/generated)
+  
+  const handleSparkle = async () => {
+    if (!lineDiffPatch) {
+      setError("No diff available to summarize.");
+      setSummaryText(''); // Clear previous summary
+      setSummaryStatus('');
+      return;
+    }
+    setIsLoading(true);
+    setError(null); // Clear previous errors
+    setSummaryText(''); // Clear previous summary while loading
+    setSummaryStatus('');
+    try {
+      // Format the processed lines into a readable diff string
+      const formattedDiff = processedLines.map(line => {
+        const prefix = line.type === 'added' ? '+' : line.type === 'removed' ? '-' : ' ';
+        return `${prefix} ${line.content}`;
+      }).join('\n');
+
+      if (!formattedDiff) {
+        setError("Could not generate diff content to send.");
+        setIsLoading(false);
+        return;
+      }
+
+      const query = "Can you please summarise any important changes seen in these files";
+      const response = await fetch('/api/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          diff: formattedDiff, // Send the formatted diff string
+          query: query,
+          fileName: fileName, // Pass fileName
+          version1Id: selectedVersion, // Pass selectedVersion
+          version2Id: secondSelectedVersion // Pass secondSelectedVersion
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        // Throw an error with the message from the backend if available
+        throw new Error(result.error || `HTTP error! status: ${response.status}`);
+      }
+
+      console.log("Gemini summary:", result.summary);
+
+      // Set state with the summary and status message
+      setSummaryText(result.summary);
+      const statusMessage = result.message || (result.warning || 'Summary generated and saved.');
+      setSummaryStatus(statusMessage);
+
+    } catch (e) {
+      console.error("Error calling Gemini API:", e);
+      setError(`Failed to get summary: ${e.message}`);
+      setSummaryText(''); // Clear summary on error
+      setSummaryStatus('');
+    } finally {
+      setIsLoading(false);
+    }
+  };
    // Removed listRef and rowHeights refs
 
   // Effect for initializing and terminating the worker
@@ -221,10 +284,14 @@ const DiffViewer = ({
     <div className="w-full h-full min-h-full flex flex-col bg-gray-950 font-mono text-sm" style={{ minWidth: '100%' }}>
       {/* Header */}
       <div className="sticky top-0 bg-gray-900 px-4 sm:px-6 py-3 border-b border-gray-800 text-gray-300 z-10 flex-shrink-0 w-full flex justify-between items-center">
-        <div>{fileName || 'File Comparison'}</div>
-        {/* Dropdowns remain the same */}
+        <div className="flex items-center space-x-4">
+          <div>{fileName || 'File Comparison'}</div>
+          <button onClick={handleSparkle} className="p-1 text-xl text-yellow-400 hover:bg-gray-800 rounded">
+            <span role="img" aria-label="sparkle">✨</span>
+          </button>
+        </div>
         {versions.length > 1 && (
-          <div className="flex items-center space-x-4">
+<div className="flex items-center space-x-4">
             <div className="flex items-center">
               <label htmlFor="compare-select" className="mr-2 text-xs text-gray-400">Compare:</label>
               <select id="compare-select" className="bg-gray-800 border border-gray-700 text-gray-300 text-sm rounded py-1 px-2 focus:ring-blue-500 focus:border-blue-500 font-sans appearance-none cursor-pointer hover:bg-gray-750" value={selectedVersion || ''} onChange={(e) => onVersionChange('first', e.target.value)} style={{ WebkitAppearance: "none", MozAppearance: "none", backgroundImage: "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgb(156, 163, 175)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 0.5rem center", backgroundSize: "1.5em 1.5em", paddingRight: "2.5rem" }}>
@@ -241,7 +308,16 @@ const DiffViewer = ({
         )}
       </div>
 
-      {/* Conditional Rendering Area */}
+      {/* Summary Display Area */}
+      {summaryText && (
+        <div className="bg-gray-800 p-4 border-b border-gray-700 text-gray-300 text-sm font-sans">
+          <h3 className="font-semibold mb-2 text-yellow-400">✨ AI Summary:</h3>
+          <p className="whitespace-pre-wrap">{summaryText}</p>
+          {summaryStatus && <p className="text-xs text-gray-500 mt-2">({summaryStatus})</p>}
+        </div>
+      )}
+
+      {/* Conditional Rendering Area for Diff Content */}
       <div className="flex-1 min-h-0 w-full">
         {isLoading ? (
           <div className="p-4 text-yellow-400">Processing comparison in background...</div>

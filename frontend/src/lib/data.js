@@ -85,4 +85,20 @@ export async function compareSupabaseFiles(
   };
 }
 
+/**
+ * Fetches the content of a single file from Supabase Storage.
+ * @param {string} bucketName - The name of the Supabase bucket.
+ * @param {string} filePath - Path to the file.
+ * @returns {Promise<string|null>} The file content as a string, or null on error.
+ */
+export async function fetchSupabaseFileContent(bucketName, filePath) {
+  console.log(`Fetching content for: ${filePath}`);
+  const content = await fetchFileContent(bucketName, filePath);
+  if (content === null) {
+    console.error(`Failed to fetch content for ${filePath}.`);
+    return null;
+  }
+  return content;
+}
+
 // You can add other data-related functions here if needed!
