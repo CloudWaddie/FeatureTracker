@@ -1,4 +1,4 @@
-export default function Feed() {
+export default function Page() {
   return (
     <>
       {/* Navbar */}
@@ -16,11 +16,18 @@ export default function Feed() {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             <div className="p-4 bg-gray-950 rounded shadow border border-solid border-white rounded-xl">
               <h2 className="text-xl font-bold">Gemini App Update</h2>
-            <p className="text-sm">Code changed or strings updated</p>
-            <p className="text-xs text-gray-500">2025-10-01</p>
+              <p className="text-sm">Code changed or strings updated</p>
+              <p className="text-xs text-gray-500">2025-10-01</p>
+            </div>
+            {/* Second Card */}
+            <div className="p-4 bg-gray-950 rounded shadow border border-solid border-white rounded-xl">
+              <h2 className="text-xl font-bold">Gemini 2 App Update</h2>
+              <p className="text-sm">Code changed or strings updated 2</p>
+              <p className="text-xs text-gray-500">2025-10-01</p>
+            </div>
+            {/* Add more cards here as needed */}
           </div>
         </div>
-       </div>
       </div>
     </>
   );
