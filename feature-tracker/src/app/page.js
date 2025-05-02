@@ -48,7 +48,6 @@ export default function Page() {
   if (loading && !updates) return <p>Loading updates...</p>;
   if (error) return <p>Error loading updates: {error}</p>;
   if (!updates) return <p>No updates available.</p>;
-  
   const secondsDiff = lastChecked ? Math.round((currentTime - lastChecked) / 1000) : null;
 
   return (
