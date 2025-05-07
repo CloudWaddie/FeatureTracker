@@ -50,7 +50,7 @@ export default function Page() {
   if (!updates) return <p>No updates available.</p>;
   const secondsDiff = lastChecked ? Math.round((currentTime - lastChecked) / 1000) : null;
   const typeDisplayNameMap = {
-    'strings': 'New strings added: '
+    'strings': 'New strings added'
   };
 
   return (
@@ -63,9 +63,9 @@ export default function Page() {
 
           return (
             <div className="p-4 bg-gray-950 rounded shadow border border-solid border-white rounded-xl" key={update.id}>
-              <h2 className="text-xl font-bold">{typeDisplayName}{update.appId}</h2>
+              <h2 className="text-xl font-bold">{typeDisplayName}: {update.appId}</h2>
               <p className="text-sm">{update.details}</p>
-              <p className="text-xs text-gray-500">{new Date(update.date * 1000).toString()}</p>
+              <p className="text-xs text-gray-500">{new Date(update.date * 1000).toLocaleDateString()}</p>
             </div>
           );
         })}
