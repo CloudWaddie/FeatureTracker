@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 
 let taskRunning = false;
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 const runMyScheduledTask = async () => {
   if (taskRunning) {
@@ -20,6 +21,8 @@ const runMyScheduledTask = async () => {
     taskRunning = false;
   }
 };
+
+export { runMyScheduledTask }; // Export the function for external use
 
 let schedulerStarted = false; // Flag to ensure scheduler only starts once
 
