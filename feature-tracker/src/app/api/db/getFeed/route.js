@@ -5,9 +5,6 @@ import { NextResponse } from "next/server";
 export async function GET(request) {
   try {
     const feed = await getFeed();
-
-    console.log("Feed data:", feed);
-
     return new NextResponse(JSON.stringify(feed), { status: 200 });
 
   } catch (error) {

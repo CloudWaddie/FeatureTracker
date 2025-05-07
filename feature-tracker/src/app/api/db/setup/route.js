@@ -8,7 +8,7 @@ export async function GET(request) {
     const projectRoot = process.cwd(); // Get the current working directory
     const dbDir = path.join(projectRoot, "db");
     const dbPath = path.join(dbDir, "feature-tracker.db");
-    console.log("Database path:", process.cwd());
+    console.log("Database path:", dbPath);
     if (!fs.existsSync(dbDir)) {
     fs.mkdirSync(dbDir, { recursive: true });
     console.log(`Created directory: ${dbDir}`);
