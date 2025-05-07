@@ -33,8 +33,21 @@ export async function GET(request) {
             if (err) {
                 console.error("Error creating table:", err.message);
             } else {
-                console.log("Table created or already exists.");
+                console.log("feed table created or already exists.");
             }
+            });
+            db.run(`
+                CREATE TABLE IF NOT EXISTS appVersions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    appId TEXT NOT NULL,
+                    lastUpdated TEXT NOT NULL
+                )
+            `, (err) => {
+                if (err) {
+                    console.error("Error creating appVersions table:", err.message);
+                } else {
+                    console.log("appVersions table created or already exists.");
+                }
             });
         });
     }
