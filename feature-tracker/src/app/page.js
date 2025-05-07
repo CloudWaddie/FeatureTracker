@@ -65,7 +65,7 @@ export default function Page() {
             <div className="p-4 bg-gray-950 rounded shadow border border-solid border-white rounded-xl" key={update.id}>
               <h2 className="text-xl font-bold">{typeDisplayName}{update.appId}</h2>
               <p className="text-sm">{update.details}</p>
-              <p className="text-xs text-gray-500">{Date(update.Date * 1000)}</p>
+              <p className="text-xs text-gray-500">{Date(update.date * 1000)}</p>
             </div>
           );
         })}
