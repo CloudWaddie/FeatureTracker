@@ -13,7 +13,7 @@ export default function Page() {
   const fetchUpdates = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/updates');
+      const response = await fetch('/api/db/getFeed');
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -49,19 +49,26 @@ export default function Page() {
   if (error) return <p>Error loading updates: {error}</p>;
   if (!updates) return <p>No updates available.</p>;
   const secondsDiff = lastChecked ? Math.round((currentTime - lastChecked) / 1000) : null;
+  const typeDisplayNameMap = {
+    'strings': 'New strings added'
+  };
 
   return (
     <>
       <p>Last checked for updates: {lastChecked ? timeSince.format(-secondsDiff, "second") : 'Never'}</p>
       {/* Feed (card grid) orded by most recent */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {updates.map((update) => (
-          <div className="p-4 bg-gray-950 rounded shadow border border-solid border-white rounded-xl" key={update.id}>
-            <h2 className="text-xl font-bold">{update.title}</h2>
-            <p className="text-sm">{update.description}</p>
-            <p className="text-xs text-gray-500">{update.date}</p>
-          </div>
-        ))}
+        {updates.map((update) => {
+          const typeDisplayName = typeDisplayNameMap[update.type] || update.type;
+
+          return (
+            <div className="p-4 bg-gray-950 rounded shadow border border-solid border-white rounded-xl" key={update.id}>
+              <h2 className="text-xl font-bold">{typeDisplayName}: {update.appId}</h2>
+              <p className="text-sm">{update.details}</p>
+              <p className="text-xs text-gray-500">{new Date(update.date * 1000).toLocaleDateString()}</p>
+            </div>
+          );
+        })}
       </div>
     </>
   );
