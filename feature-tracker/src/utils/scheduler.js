@@ -12,6 +12,7 @@ const runMyScheduledTask = async () => {
   try {
     console.log('Performing the scheduled task...');
     // Simulate a task that takes some time to complete
+    await delay(2000); // Simulate a 2-second delay
     console.log('Scheduled task finished successfully.');
   } catch (error) {
     console.error('Error during scheduled task:', error);
