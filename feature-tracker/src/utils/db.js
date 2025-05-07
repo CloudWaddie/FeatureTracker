@@ -16,8 +16,8 @@ export default function getFeed() {
                 console.error("Error fetching feed:", err.message);
                 reject(err);
             } else {
-                resolve(rows);
                 console.log("Feed fetched successfully:", rows);
+                resolve(rows);
             }
         });
     });
