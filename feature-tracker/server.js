@@ -2,7 +2,7 @@
 import { createServer } from 'http';
 import { parse } from 'url';
 import next from 'next';
-import startScheduler from './src/utils/scheduler.js'; // Adjust the path as necessary
+import startScheduler from './src/utils/scheduler.js';
 
 const port = parseInt(process.env.PORT || '3000', 10);
 const dev = process.env.NODE_ENV !== 'production';
