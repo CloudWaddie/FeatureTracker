@@ -33,3 +33,6 @@ export function getLastUpdated(appId) {
         });
     });
 }
+
+db.close();
+// Close the database connection when the module is unloaded
