@@ -1,15 +1,15 @@
-import gplay, { app } from "google-play-scraper";
+import gplay from "google-play-scraper";
 import { NextResponse } from "next/server";
 
 
 export async function GET(request) {
     const { searchParams } = new URL(request.url)
-    const packageName = searchParams.get('packageName')
+    const appId = searchParams.get('appId')
     let initialLastUpdated = searchParams.get('lastUpdated')
 
-    if (!packageName) {
+    if (!appId) {
         // Use NextResponse for consistency
-        return NextResponse.json({ error: 'Missing packageName' }, { status: 400 })
+        return NextResponse.json({ error: 'Missing appId' }, { status: 400 })
     }
     if (!initialLastUpdated) {
         initialLastUpdated = '0' // Default to 0 if initialLastUpdated is not provided
@@ -18,14 +18,12 @@ export async function GET(request) {
 
     try {
         // Await the promise chain and return the result
-        const appDetails = await gplay.app({appId: packageName})
-        console.log('App details:', appDetails)
+        const appDetails = await gplay.app({appId: appId})
         const lastUpdated = appDetails?.updated
         if (!lastUpdated) {
             // Use NextResponse
             return NextResponse.json({ error: 'App lastUpdated not found' }, { status: 404 })
         }
-        console.log('App lastUpdated:', initialLastUpdated)
 
         if (lastUpdated > parseInt(initialLastUpdated, 10)) { // Ensure comparison is numeric
             // Use NextResponse
