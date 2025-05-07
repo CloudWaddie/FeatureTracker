@@ -1,4 +1,4 @@
-import gplay from "google-play-scraper";
+import gplay, { app } from "google-play-scraper";
 import { NextResponse } from "next/server";
 
 
@@ -13,16 +13,19 @@ export async function GET(request) {
     }
     if (!initialLastUpdated) {
         initialLastUpdated = '0' // Default to 0 if initialLastUpdated is not provided
+        console.log('initialLastUpdated not provided, defaulting to 0')
     }
 
     try {
         // Await the promise chain and return the result
         const appDetails = await gplay.app({appId: packageName})
-        const lastUpdated = appDetails.updated
+        console.log('App details:', appDetails)
+        const lastUpdated = appDetails?.updated
         if (!lastUpdated) {
             // Use NextResponse
             return NextResponse.json({ error: 'App lastUpdated not found' }, { status: 404 })
         }
+        console.log('App lastUpdated:', initialLastUpdated)
 
         if (lastUpdated > parseInt(initialLastUpdated, 10)) { // Ensure comparison is numeric
             // Use NextResponse
