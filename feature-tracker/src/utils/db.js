@@ -33,3 +33,31 @@ export function getLastUpdated(appId) {
         });
     });
 }
+// Add a new card to the feed through some JSON data
+export function updateFeed(data){
+    return new Promise((resolve, reject) => {
+        db.run("INSERT INTO feed (type, details, appId, date) VALUES (?, ?, ?, ?)", [data.type, data.details, data.appId, Date.now()], function(err) {
+            if (err) {
+                console.error("Error updating feed:", err.message);
+                reject(err);
+            } else {
+                console.log("Feed updated successfully:", this.lastID);
+                resolve(this.lastID);
+            }
+        });
+    });
+}
+
+export function updateLastUpdated(appId, lastUpdated) {
+    return new Promise((resolve, reject) => {
+        db.run("UPDATE appVersions SET lastUpdated = ? WHERE appId = ?", [lastUpdated, appId], function(err) {
+            if (err) {
+                console.error("Error updating last updated date:", err.message);
+                reject(err);
+            } else {
+                console.log("Last updated date updated successfully:", this.changes);
+                resolve(this.changes);
+            }
+        });
+    });
+}
