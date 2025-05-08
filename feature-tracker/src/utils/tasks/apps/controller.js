@@ -13,7 +13,7 @@ export default async function appController() {
             appId: anyUpdates.package,
             lastUpdated: anyUpdates.lastUpdated,
         };
-        updateDB(data); // Call the function to update the database
+        await updateDB(data); // Call the function to update the database
     }
     else {
         console.log("No updates available.");

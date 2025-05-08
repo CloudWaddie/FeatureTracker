@@ -14,7 +14,7 @@ const runMyScheduledTask = async () => {
   try {
     console.log('Performing the scheduled task...');
     // Simulate a task that takes some time to complete
-    console.log(runAllTasks()); // Call the function to run all tasks
+    console.log(await runAllTasks()); // Call the function to run all tasks
     console.log('Scheduled task finished successfully.');
   } catch (error) {
     console.error('Error during scheduled task:', error);
