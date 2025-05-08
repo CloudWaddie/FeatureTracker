@@ -27,7 +27,7 @@ export async function GET(request) {
 
         if (lastUpdated > parseInt(initialLastUpdated, 10)) { // Ensure comparison is numeric
             // Use NextResponse
-            return NextResponse.json({ updateAvailable: true, lastUpdated: lastUpdated, updateString: appDetails.recentChanges, details: appDetails.descriptionHtml }, { status: 200 })
+            return NextResponse.json({ updateAvailable: true, lastUpdated: lastUpdated, updateString: appDetails.recentChanges, details: appDetails.descriptionHtml, package: appId }, { status: 200 })
         } else {
             // Use NextResponse
             return NextResponse.json({ updateAvailable: false }, { status: 200 })

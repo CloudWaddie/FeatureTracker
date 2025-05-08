@@ -34,7 +34,7 @@ const startScheduler = () => {
   }
 
   console.log('Attempting to start scheduler...');
-  cron.schedule('*/5 * * * *', () => {
+  cron.schedule('*/30 * * * *', () => {
     console.log('Triggering scheduled task via cron...');
     runMyScheduledTask();
   });
