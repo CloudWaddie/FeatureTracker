@@ -13,7 +13,7 @@ export async function GET(request) {
             },
         });
     } catch (error) {
-        console.error("Error downloading database file:", error);
-        return new Response("Error downloading database file", { status: 500 });
+        console.error("Error downloading database file:", error, { dbPath });
+        return new Response("Failed to download database file", { status: 500 });
     }
 }
