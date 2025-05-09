@@ -14,7 +14,7 @@ export default async function getLastUpdated(app) { // <-- Make the function asy
 
       // Check if lastUpdated is null or undefined
       if (data.lastUpdated === null || data.lastUpdated === undefined) {
-        console.log("No last updated date found for this app.");
+        console.warn("No last updated date found for this app. Defaulting to 0.");
         data.lastUpdated = 0; // Set to 0 if not found
       }
       return data;

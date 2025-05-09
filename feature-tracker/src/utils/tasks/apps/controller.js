@@ -7,7 +7,7 @@ import { config, cwd } from "process";
 export default async function appController() {
     // Get list of apps to check for updates from config.txt from current directory
     const configPath = `${cwd()}/src/utils/tasks/apps/config.txt`; // Get the current working directory and append config.txt
-    const appsToCheck = fs.readFileSync(configPath, "utf8")
+    const appsToCheck = (await fs.promises.readFile(configPath, 'utf8'))
                         .split("\n")
                         .filter(Boolean)
                         .map(line => line.trim());
