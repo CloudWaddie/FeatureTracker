@@ -49,6 +49,14 @@ export async function GET(request) {
                     console.log("appVersions table created or already exists.");
                 }
             });
+            db.run(`CREATE INDEX idx_feed_date ON feed (date);`, (err) => {
+                if (err) {
+                    console.error("Error creating index on feed table:", err.message);
+                } else {
+                    console.log("Index on feed table created or already exists.");
+                }
+            }
+            );
         });
     }
 
