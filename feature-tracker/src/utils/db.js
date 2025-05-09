@@ -10,7 +10,7 @@ const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CR
 
 export function getFeed() {
     return new Promise((resolve, reject) => {
-        db.all("SELECT * FROM feed", [], (err, rows) => {
+        db.all("SELECT * FROM feed ORDER BY date DESC LIMIT 50", [], (err, rows) => {
             if (err) {
                 console.error("Error fetching feed:", err.message);
                 reject(err);
