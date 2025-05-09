@@ -1,8 +1,8 @@
-export default async function getLastUpdated() { // <-- Make the function async
+export default async function getLastUpdated(app) { // <-- Make the function async
     console.log("Checking for last updated date for ...");
   
     try {
-      const response = await fetch(`${process.env.DOMAIN}/api/db/getLastUpdated?appId=com.deepseek.chat`); // <-- await the fetch call
+      const response = await fetch(`${process.env.DOMAIN}/api/db/getLastUpdated?appId=${app}`); // <-- await the fetch call
   
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -10,6 +10,13 @@ export default async function getLastUpdated() { // <-- Make the function async
   
       const data = await response.json(); // <-- await parsing the JSON response
 
+      console.log("Last updated date:", data); // Log the last updated date
+
+      // Check if lastUpdated is null or undefined
+      if (data.lastUpdated === null || data.lastUpdated === undefined) {
+        console.log("No last updated date found for this app.");
+        data.lastUpdated = 0; // Set to 0 if not found
+      }
       return data;
   
     } catch (error) {
