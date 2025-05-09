@@ -39,7 +39,7 @@ export async function GET(request) {
             db.run(`
                 CREATE TABLE IF NOT EXISTS appVersions (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    appId TEXT NOT NULL,
+                    appId TEXT NOT NULL UNIQUE,
                     lastUpdated TEXT NOT NULL
                 )
             `, (err) => {
