@@ -93,7 +93,7 @@ export default function Page() {
             <div className="p-4 bg-gray-950 rounded shadow border border-solid border-white rounded-xl" key={update.id}>
               <h2 className="text-xl font-bold" id={'update-'+update.id}>{typeDisplayName}: {update.appId}</h2>
               <p className="text-sm">{update.details}</p>
-              <p className="text-xs text-gray-500">{new Date(update.date).toLocaleDateString()}</p>
+              <p className="text-xs text-gray-500">{new Date(update.date).toLocaleString()}</p>
             </div>
           );
         })}
