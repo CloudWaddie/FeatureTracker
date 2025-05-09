@@ -4,3 +4,6 @@ ai.perplexity.app.android
 com.anthropic.claude
 ai.x.grok
 com.google.android.googlequicksearchbox
+ai.mistral.chat
+ai.qwenlm.chat.android
+com.microsoft.copilot
