@@ -15,7 +15,7 @@ export async function GET(request) {
       site_url: siteUrl,
       language: 'en',
       pubDate: new Date().toISOString(),
-      ttl: 30, // Time to live in minutes
+      ttl: 15, // Time to live in minutes lowered to make some rss services update faster
     });
 
     const updates = await getFeed();
