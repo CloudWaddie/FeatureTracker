@@ -1,8 +1,8 @@
-export default async function checkForUpdates(lastUpdated) { // <-- Make the function async
+export default async function checkForUpdates(lastUpdated, app) { // <-- Make the function async
     console.log("Fetching app version...");
   
     try {
-      const response = await fetch(`${process.env.DOMAIN}/api/getAppVersion?appId=com.deepseek.chat&lastUpdated=${lastUpdated}`); // <-- await the fetch call
+      const response = await fetch(`${process.env.DOMAIN}/api/getAppVersion?appId=${app}&lastUpdated=${lastUpdated}`); // <-- await the fetch call
   
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
