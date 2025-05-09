@@ -2,7 +2,7 @@ export default async function checkForUpdates(lastUpdated, app) { // <-- Make th
     console.log("Fetching app version...");
   
     try {
-      const response = await fetch(`${process.env.DOMAIN}/api/getAppVersion?appId=${app}&lastUpdated=${lastUpdated}`); // <-- await the fetch call
+      const response = await fetch(`${process.env.DOMAIN}/api/getAppVersion?appId=${app}&lastUpdated=${lastUpdated}`); // Fetch app version, await the fetch call
   
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
