@@ -8,14 +8,36 @@ const dbPath = path.join(dbDir, "feature-tracker.db");
 
 const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE);
 
-export function getFeed() {
+const ITEMS_PER_PAGE = 10; // Number of items to fetch per page
+
+export function getFeed(page = 1) {
     return new Promise((resolve, reject) => {
-        db.all("SELECT * FROM feed ORDER BY date DESC LIMIT 50", [], (err, rows) => {
+        const offset = (page - 1) * ITEMS_PER_PAGE;
+        db.all("SELECT * FROM feed ORDER BY date DESC LIMIT ? OFFSET ?", [ITEMS_PER_PAGE, offset], (err, rows) => {
             if (err) {
                 console.error("Error fetching feed:", err.message);
                 reject(err);
             } else {
                 resolve(rows);
+            }
+        });
+    });
+}
+
+export function getTotalPages() {
+    return new Promise((resolve, reject) => {
+        db.get("SELECT COUNT(*) as count FROM feed", (err, row) => {
+            if (err) {
+                console.error("Error fetching total item count:", err.message);
+                reject(err);
+            } else {
+                const totalItems = row ? row.count : 0;
+                if (ITEMS_PER_PAGE <= 0) {
+                    resolve(0); // Or reject with an error
+                    return;
+                }
+                const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+                resolve(totalPages);
             }
         });
     });
