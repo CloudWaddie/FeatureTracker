@@ -13,7 +13,7 @@ export default function RootLayout({ children }) {
         rel="alternate"
         type="application/rss+xml"
         title="Feature Tracker"
-        href=`${process.env.DOMAIN}/api/rss`
+        href={`${process.env.DOMAIN}/api/rss`}
         />
       </head>
       <body>
