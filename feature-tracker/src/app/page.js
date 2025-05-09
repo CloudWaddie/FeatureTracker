@@ -61,10 +61,9 @@ export default function Page() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {updates.map((update) => {
           const typeDisplayName = typeDisplayNameMap[update.type] || update.type;
-
           return (
             <div className="p-4 bg-gray-950 rounded shadow border border-solid border-white rounded-xl" key={update.id}>
-              <h2 className="text-xl font-bold">{typeDisplayName}: {update.appId}</h2>
+              <h2 className="text-xl font-bold" id={'update-'+update.id}>{typeDisplayName}: {update.appId}</h2>
               <p className="text-sm">{update.details}</p>
               <p className="text-xs text-gray-500">{new Date(update.date).toLocaleDateString()}</p>
             </div>
