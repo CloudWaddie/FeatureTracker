@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { typeDisplayNameMap } from './consts';
 
-export default function Page() {
+function PageContent() {
   const [updates, setUpdates] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -15,7 +16,7 @@ export default function Page() {
   const searchParams = useSearchParams();
   const [totalPages, setTotalPages] = useState(0);
 
-  const fetchTotalPages = async () => {
+  const fetchTotalPages = useCallback(async () => {
     try {
       const response = await fetch(`/api/getTotalPages`);
       if (!response.ok) {
@@ -25,24 +26,32 @@ export default function Page() {
       setTotalPages(data);
     } catch (err) {
       console.error("Fetching total pages failed:", err);
+      // Optionally set an error state for total pages if needed
     }
-  };
-  
+  }, []); // setTotalPages is stable
+
   useEffect(() => {
     fetchTotalPages(); // Initial fetch
-  }, []);
+  }, [fetchTotalPages]);
 
   useEffect(() => {
     const pageFromUrl = searchParams.get('page');
     if (pageFromUrl && !isNaN(parseInt(pageFromUrl))) {
-      setCurrentPage(Math.abs(parseInt(pageFromUrl)));
+      const pageNumber = Math.abs(parseInt(pageFromUrl));
+      if (pageNumber !== currentPage) {
+        setCurrentPage(pageNumber);
+      }
+    } else if (currentPage !== 1) { // Reset to 1 if no valid page in URL and not already 1
+        setCurrentPage(1);
+        // Optionally update URL if page is reset, though this might cause loops if not handled carefully
+        // router.push(`/?page=1`); 
     }
-  }, [searchParams]);
+  }, [searchParams, currentPage, setCurrentPage]);
 
-  const fetchUpdates = async (page = 1) => {
+  const fetchUpdates = useCallback(async (page = 1) => {
     try {
       setLoading(true);
-      fetchTotalPages();
+      // fetchTotalPages(); // fetchTotalPages is now called independently and on interval
       const response = await fetch(`/api/db/getFeed?page=${page}`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -58,42 +67,42 @@ export default function Page() {
       setLoading(false);
       setLastChecked(new Date());
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchUpdates(currentPage);
+    // Also fetch total pages when current page changes or on interval, as it might affect pagination
+    fetchTotalPages(); 
 
-    const pollingInterval = setInterval(() => fetchUpdates(currentPage), 60000); // Poll every 60 seconds (60000 ms)
+    const pollingInterval = setInterval(() => {
+        fetchUpdates(currentPage);
+        fetchTotalPages(); // Keep total pages updated
+    }, 60000);
     return () => clearInterval(pollingInterval);
-  }, [currentPage]);
+  }, [currentPage, fetchUpdates, fetchTotalPages]);
 
   useEffect(() => {
     const timerId = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
-
     return () => clearInterval(timerId);
   }, []);
 
   if (loading && !updates) return <p>Loading updates...</p>;
   if (error) return <p>Error loading updates: {error}</p>;
   if (!updates) return <p>No updates available.</p>;
-  const secondsDiff = lastChecked ? Math.round((currentTime - lastChecked) / 1000) : null;
-  const typeDisplayNameMap = {
-    'strings': 'New strings added',
-    'appversion': 'New app version',
-  };
+
+  const secondsDiff = lastChecked ? Math.round((currentTime.getTime() - lastChecked.getTime()) / 1000) : null;
 
   return (
     <>
       <p>Last checked for updates: {lastChecked ? timeSince.format(-secondsDiff, "second") : 'Never'}</p>
-      {/* Feed (card grid) orded by most recent */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {updates.map((update) => {
           const typeDisplayName = typeDisplayNameMap[update.type] || update.type;
           return (
             <div className="p-4 bg-gray-950 rounded shadow border border-solid border-white rounded-xl" key={update.id}>
-              <h2 className="text-xl font-bold" id={'update-'+update.id}>{typeDisplayName}: {update.appId}</h2>
+              <h2 className="text-xl font-bold" id={'update-' + update.id}>{typeDisplayName}: {update.appId}</h2>
               <p className="text-sm">{update.details}</p>
               <p className="text-xs text-gray-500">{new Date(update.date).toLocaleString()}</p>
             </div>
@@ -116,12 +125,20 @@ export default function Page() {
             const newPage = currentPage + 1;
             router.push(`/?page=${newPage}`);
           }}
-          disabled={currentPage === totalPages}
+          disabled={currentPage === totalPages || totalPages === 0} // Disable if totalPages is 0
           className="px-4 py-2 bg-gray-700 text-white rounded disabled:opacity-50"
         >
           Next Page
         </button>
       </div>
     </>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<p>Loading page information...</p>}>
+      <PageContent />
+    </Suspense>
   );
 }

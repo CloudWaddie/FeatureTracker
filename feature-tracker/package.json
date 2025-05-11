@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@gonetone/google-play-api": "^1.3.1",
+    "app-store-scraper": "^0.18.0",
     "google-play-scraper": "^10.0.1",
     "mocha": "11.1.0",
     "next": "^15.3.2",
