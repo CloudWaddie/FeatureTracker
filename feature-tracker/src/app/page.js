@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function Page() {
   const [updates, setUpdates] = useState(null);
@@ -9,11 +10,40 @@ export default function Page() {
   const [lastChecked, setLastChecked] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const timeSince = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+  const [currentPage, setCurrentPage] = useState(1);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [totalPages, setTotalPages] = useState(0);
 
-  const fetchUpdates = async () => {
+  const fetchTotalPages = async () => {
+    try {
+      const response = await fetch(`/api/getTotalPages`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      setTotalPages(data);
+    } catch (err) {
+      console.error("Fetching total pages failed:", err);
+    }
+  };
+  
+  useEffect(() => {
+    fetchTotalPages(); // Initial fetch
+  }, []);
+
+  useEffect(() => {
+    const pageFromUrl = searchParams.get('page');
+    if (pageFromUrl && !isNaN(parseInt(pageFromUrl))) {
+      setCurrentPage(Math.abs(parseInt(pageFromUrl)));
+    }
+  }, [searchParams]);
+
+  const fetchUpdates = async (page = 1) => {
     try {
       setLoading(true);
-      const response = await fetch('/api/db/getFeed');
+      fetchTotalPages();
+      const response = await fetch(`/api/db/getFeed?page=${page}`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -31,11 +61,11 @@ export default function Page() {
   };
 
   useEffect(() => {
-    fetchUpdates();
+    fetchUpdates(currentPage);
 
-    const pollingInterval = setInterval(fetchUpdates, 60000); // Poll every 60 seconds (60000 ms)
+    const pollingInterval = setInterval(() => fetchUpdates(currentPage), 60000); // Poll every 60 seconds (60000 ms)
     return () => clearInterval(pollingInterval);
-  }, []);
+  }, [currentPage]);
 
   useEffect(() => {
     const timerId = setInterval(() => {
@@ -65,10 +95,32 @@ export default function Page() {
             <div className="p-4 bg-gray-950 rounded shadow border border-solid border-white rounded-xl" key={update.id}>
               <h2 className="text-xl font-bold" id={'update-'+update.id}>{typeDisplayName}: {update.appId}</h2>
               <p className="text-sm">{update.details}</p>
-              <p className="text-xs text-gray-500">{new Date(update.date).toLocaleDateString()}</p>
+              <p className="text-xs text-gray-500">{new Date(update.date).toLocaleString()}</p>
             </div>
           );
         })}
+      </div>
+      <div className="flex justify-center space-x-4 mt-4">
+        <button
+          onClick={() => {
+            const newPage = Math.max(1, currentPage - 1);
+            router.push(`/?page=${newPage}`);
+          }}
+          disabled={currentPage === 1}
+          className="px-4 py-2 bg-gray-700 text-white rounded disabled:opacity-50"
+        >
+          Previous Page
+        </button>
+        <button
+          onClick={() => {
+            const newPage = currentPage + 1;
+            router.push(`/?page=${newPage}`);
+          }}
+          disabled={currentPage === totalPages}
+          className="px-4 py-2 bg-gray-700 text-white rounded disabled:opacity-50"
+        >
+          Next Page
+        </button>
       </div>
     </>
   );
