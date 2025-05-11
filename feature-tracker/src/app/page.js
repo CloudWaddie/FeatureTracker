@@ -15,32 +15,34 @@ export default function Page() {
   const searchParams = useSearchParams();
   const [totalPages, setTotalPages] = useState(0);
 
-  useEffect(() => {
-    const fetchTotalPages = async () => {
-      try {
-        const response = await fetch(`/api/getTotalPages`);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        setTotalPages(data);
-      } catch (err) {
-        console.error("Fetching total pages failed:", err);
+  const fetchTotalPages = async () => {
+    try {
+      const response = await fetch(`/api/getTotalPages`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-    };
-    fetchTotalPages();
-  }, []); // Empty dependency array ensures this runs only once on mount
+      const data = await response.json();
+      setTotalPages(data);
+    } catch (err) {
+      console.error("Fetching total pages failed:", err);
+    }
+  };
+  
+  useEffect(() => {
+    fetchTotalPages(); // Initial fetch
+  }, []);
 
   useEffect(() => {
     const pageFromUrl = searchParams.get('page');
     if (pageFromUrl && !isNaN(parseInt(pageFromUrl))) {
-      setCurrentPage(parseInt(pageFromUrl));
+      setCurrentPage(Math.abs(parseInt(pageFromUrl)));
     }
   }, [searchParams]);
 
   const fetchUpdates = async (page = 1) => {
     try {
       setLoading(true);
+      fetchTotalPages();
       const response = await fetch(`/api/db/getFeed?page=${page}`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -102,9 +104,7 @@ export default function Page() {
         <button
           onClick={() => {
             const newPage = Math.max(1, currentPage - 1);
-            setCurrentPage(newPage);
             router.push(`/?page=${newPage}`);
-            fetchUpdates(newPage);
           }}
           disabled={currentPage === 1}
           className="px-4 py-2 bg-gray-700 text-white rounded disabled:opacity-50"
@@ -114,9 +114,7 @@ export default function Page() {
         <button
           onClick={() => {
             const newPage = currentPage + 1;
-            setCurrentPage(newPage);
             router.push(`/?page=${newPage}`);
-            fetchUpdates(newPage);
           }}
           disabled={currentPage === totalPages}
           className="px-4 py-2 bg-gray-700 text-white rounded disabled:opacity-50"
