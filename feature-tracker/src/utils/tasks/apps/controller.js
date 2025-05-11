@@ -21,7 +21,7 @@ export default async function appController() {
     for (const line of lines) {
         const trimmedLine = line.trim();
 
-        if (trimmedLine === "") {
+        if (trimmedLine === "" || trimmedLine.startsWith('#')) {
             continue;
         }
 
