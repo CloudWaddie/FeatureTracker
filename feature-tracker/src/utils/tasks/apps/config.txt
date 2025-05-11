@@ -1,3 +1,4 @@
+[android]
 com.deepseek.chat
 com.openai.chatgpt
 ai.perplexity.app.android
@@ -7,3 +8,6 @@ com.google.android.googlequicksearchbox
 ai.mistral.chat
 ai.qwenlm.chat.android
 com.microsoft.copilot
+
+[ios]
+6670324846

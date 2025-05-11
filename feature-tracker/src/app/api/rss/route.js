@@ -1,6 +1,7 @@
 import RSS from 'rss';
 import { getFeed } from "@/utils/db";
 import { NextResponse } from "next/server";
+import { typeDisplayNameMap } from '@/app/consts';
 
 export async function GET(request) {
   try {
@@ -19,11 +20,6 @@ export async function GET(request) {
     });
 
     const updates = await getFeed();
-
-    const typeDisplayNameMap = {
-      'strings': 'New strings added',
-      'appversion': 'New app version',
-    };
 
     updates.forEach(update => {
       const typeDisplayName = typeDisplayNameMap[update.type] || update.type;
