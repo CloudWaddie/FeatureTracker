@@ -72,7 +72,7 @@ export function updateFeed(data){
 
 export function updateLastUpdated(appId, lastUpdated) {
     return new Promise((resolve, reject) => {
-        db.run("INSERT INTO appVersions (appId, lastUpdated) VALUES (?, ?) ON CONFLICT(appId) DO UPDATE SET lastUpdated = excluded.lastUpdated;", [appId, lastUpdated], function(err) {
+        db.run("INSERT INTO appVersions (appId, lastUpdated) VALUES (?, ?) ON CONFLICT(appId) DO UPDATE SET lastUpdated = excluded.lastUpdated;", [appId.toString(), lastUpdated], function(err) {
             if (err) {
                 console.error("Error updating last updated date:", err.message);
                 reject(err);
