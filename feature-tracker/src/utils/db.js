@@ -8,7 +8,7 @@ const dbPath = path.join(dbDir, "feature-tracker.db");
 
 const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE);
 
-const ITEMS_PER_PAGE = 10; // Number of items to fetch per page
+const ITEMS_PER_PAGE = 12; // Number of items to fetch per page
 
 export function getFeed(page = 1) {
     return new Promise((resolve, reject) => {
