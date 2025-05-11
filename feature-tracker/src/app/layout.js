@@ -7,7 +7,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
       <head>
         <link
         rel="alternate"
@@ -16,9 +16,9 @@ export default function RootLayout({ children }) {
         href={`${process.env.DOMAIN}/api/rss`}
         />
       </head>
-      <body>
+      <body className="bg-black text-white min-h-screen">
         {/* Navbar */}
-        <div className="sticky top-0 z-50 flex flex-col min-h-10 border-b border-solid border-white min-w-screen">
+        <div className="sticky top-0 z-50 flex flex-col min-h-10 border-b border-solid border-white min-w-screen bg-gray-950">
           <div className="flex flex-col p-4">
             <h1 className="text-4xl font-bold">Feature Tracker</h1>
             <p className="text-xs">Realtime tracking of features added to AI apps</p>

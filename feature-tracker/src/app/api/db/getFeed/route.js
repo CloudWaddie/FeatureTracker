@@ -3,8 +3,11 @@ import { NextResponse } from "next/server";
 
 // Get the feed data from the database
 export async function GET(request) {
+  const { searchParams } = new URL(request.url);
+  const page = Math.abs(parseInt(searchParams.get('page') || '1', 10));
+
   try {
-    const feed = await getFeed();
+    const feed = await getFeed(page);
     return new NextResponse(JSON.stringify(feed), { status: 200 });
   } catch (error) {
     console.error("Error fetching feed data:", error);
