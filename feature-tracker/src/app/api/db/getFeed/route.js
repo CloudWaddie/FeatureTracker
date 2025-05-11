@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 // Get the feed data from the database
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
-  const page = parseInt(searchParams.get('page') || '1', 10);
+  const page = Math.abs(parseInt(searchParams.get('page') || '1', 10));
 
   try {
     const feed = await getFeed(page);
