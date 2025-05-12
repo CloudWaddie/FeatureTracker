@@ -22,7 +22,7 @@ com.microsoft.copilot
 6670324846
 # Mistral
 6740410176
-# Qwen
-6743778442
+# Qwen - Not working?
+#6743778442
 # Copilot
 6472538445
