@@ -10,5 +10,19 @@ ai.qwenlm.chat.android
 com.microsoft.copilot
 
 [ios]
-# Grok app id
+# Deepseek
+6737597349
+# ChatGPT
+6448311069
+# Perplexity
+1668000334
+# Claude
+6473753684
+# Grok
 6670324846
+# Mistral
+6740410176
+# Qwen
+6743778442
+# Copilot
+6472538445
