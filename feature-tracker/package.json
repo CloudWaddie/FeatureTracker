@@ -19,6 +19,7 @@
     "react-dom": "^19.0.0",
     "rss": "^1.2.2",
     "selenium-webdriver": "^4.31.0",
+    "sitemapper": "^3.2.20",
     "sqlite3": "^5.1.7"
   },
   "devDependencies": {

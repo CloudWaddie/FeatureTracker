@@ -1,0 +1,2 @@
+https://openai.com/sitemap.xml
+https://openrouter.ai/sitemap.xml
