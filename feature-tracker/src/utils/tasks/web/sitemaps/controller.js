@@ -40,6 +40,7 @@ export default async function sitemapController() {
             console.log(`Fetched sitemap from ${url}`);
         } catch (error) {
             console.error(`Error fetching sitemap from ${url}:`, error);
+            return;
         }
         await clearNewSitemapsByURL(url);
         await updateNewSitemaps(sites);
@@ -47,20 +48,26 @@ export default async function sitemapController() {
         const deletions = await findDeletions(url);
         await clearOldSitemapsByURL(url);
         await updateOldSitemaps(sites);
-        console.log(`Additions for ${url}:`, additions);
-        console.log(`Deletions for ${url}:`, deletions);
-        const readableAdditions = additions.map(item => item.url).join(', ');
-        const readableDeletions = deletions.map(item => item.url).join(', ');
-        //console.log(`Readable additions for ${url}:`, readableAdditions);
-        //console.log(`Readable deletions for ${url}:`, readableDeletions);
-        const dataToAddToFeed = {
-            type: 'sitemap',
-            details: `Additions: ${readableAdditions}, Deletions: ${readableDeletions}`,
-            appId: url,
-            date: new Date().toISOString(),
-        };
-        //console.log(`Data to add to feed for ${url}:`, dataToAddToFeed);
-        await updateFeed(dataToAddToFeed);
+        if (additions.length === 0 && deletions.length === 0) {
+            console.log(`No changes detected for ${url}`);
+            continue;
+        }
+        else {
+            console.log(`Additions for ${url}:`, additions);
+            console.log(`Deletions for ${url}:`, deletions);
+            const readableAdditions = additions.map(item => item.url).join(', ');
+            const readableDeletions = deletions.map(item => item.url).join(', ');
+            //console.log(`Readable additions for ${url}:`, readableAdditions);
+            //console.log(`Readable deletions for ${url}:`, readableDeletions);
+            const dataToAddToFeed = {
+                type: 'sitemap',
+                details: `Additions: ${readableAdditions}, Deletions: ${readableDeletions}`,
+                appId: url,
+                date: new Date().toISOString(),
+            };
+            //console.log(`Data to add to feed for ${url}:`, dataToAddToFeed);
+            await updateFeed(dataToAddToFeed);
+        }
     }
     return "Sitemap web controller is running...";
 }

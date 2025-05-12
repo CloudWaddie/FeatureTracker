@@ -152,12 +152,14 @@ export async function updateOldSitemaps(sites) {
         console.error("Database connection not available for updateOldSitemaps.");
         return; // Or handle error appropriately
     }
-    for (const site of sites.sites) {
-        currentDb.run("INSERT INTO oldSitemaps (siteURL, url, lastUpdated) VALUES (?, ?, ?)", [sites.url, site.loc, site.lastmod], function(err) {
-            if (err) {
-                console.error("Error updating old sitemaps:", err.message);
-            }
-        });
+    if (sites && sites.sites) {
+        for (const site of sites.sites) {
+            currentDb.run("INSERT INTO oldSitemaps (siteURL, url, lastUpdated) VALUES (?, ?, ?)", [sites.url, site.loc, site.lastmod], function(err) {
+                if (err) {
+                    console.error("Error updating old sitemaps:", err.message);
+                }
+            });
+        }
     }
 }
 
@@ -211,7 +213,7 @@ export async function updateNewSitemaps(sites) {
     for (const site of sites.sites) {
         currentDb.run("INSERT INTO newSitemaps (siteURL, url, lastUpdated) VALUES (?, ?, ?)", [sites.url, site.loc, site.lastmod], function(err) {
             if (err) {
-                console.error("Error updatingnNew sitemaps:", err.message);
+                console.error("Error updating New sitemaps:", err.message);
             }
         });
     }
