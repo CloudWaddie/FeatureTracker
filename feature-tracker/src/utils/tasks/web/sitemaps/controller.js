@@ -40,7 +40,7 @@ export default async function sitemapController() {
             console.log(`Fetched sitemap from ${url}`);
         } catch (error) {
             console.error(`Error fetching sitemap from ${url}:`, error);
-            return;
+            continue;
         }
         await clearNewSitemapsByURL(url);
         await updateNewSitemaps(sites);
