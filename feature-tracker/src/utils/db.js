@@ -152,7 +152,7 @@ export async function updateOldSitemaps(sites) {
         console.error("Database connection not available for updateOldSitemaps.");
         return; // Or handle error appropriately
     }
-    if (sites && sites.sites) {
+    if (sites && sites.sites && Array.isArray(sites.sites)) { // Check if sites and sites.sites are valid
         for (const site of sites.sites) {
             currentDb.run("INSERT INTO oldSitemaps (siteURL, url, lastUpdated) VALUES (?, ?, ?)", [sites.url, site.loc, site.lastmod], function(err) {
                 if (err) {
