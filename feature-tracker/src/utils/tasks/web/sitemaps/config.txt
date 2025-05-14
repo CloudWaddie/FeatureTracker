@@ -1,0 +1,4 @@
+https://openai.com/sitemap.xml
+https://openrouter.ai/sitemap.xml
+https://mistral.ai/sitemap.xml
+https://www.anthropic.com/sitemap.xml
