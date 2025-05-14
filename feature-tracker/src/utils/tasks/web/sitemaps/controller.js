@@ -57,8 +57,6 @@ export default async function sitemapController() {
             console.log(`Deletions for ${url}:`, deletions);
             const readableAdditions = additions.map(item => item.url).join(', ');
             const readableDeletions = deletions.map(item => item.url).join(', ');
-            //console.log(`Readable additions for ${url}:`, readableAdditions);
-            //console.log(`Readable deletions for ${url}:`, readableDeletions);
             const dataToAddToFeed = {
                 type: 'sitemap',
                 details: `Additions: ${readableAdditions}, Deletions: ${readableDeletions}`,

@@ -78,20 +78,24 @@ export async function GET(request) {
         const journalModeResult = await getRow(db, 'PRAGMA journal_mode;');
         console.log(`Current journal mode: ${journalModeResult.journal_mode}`);
 
-        if (journalModeResult.journal_mode !== 'wal') {
+       if (journalModeResult.journal_mode !== 'wal') {
             console.warn("Database is not in WAL mode. Changing to WAL...");
-             // Use execCommand helper to set WAL mode
             try {
                 await execCommand(db, 'PRAGMA journal_mode=WAL;');
                 console.log("Journal mode set to WAL.");
             } catch (walError) {
-                console.error("Failed to set WAL mode after retry:", walError);
+                console.error("Failed to set WAL mode:", walError);
+            } finally {
+                try {
+                    await closeDatabase(db);
+                    db = null;
+                    db = await openDatabase(dbPath);
+                } catch (reopenError) {
+                    console.error("Failed to close and reopen database:", reopenError);
+                    // Handle the error appropriately, possibly by rejecting the entire operation
+                    throw reopenError; // Re-throw to ensure the outer catch block handles it
+                }
             }
-             // Note: Setting WAL mode requires closing and reopening the database
-             // for the change to fully take effect in some contexts,
-             // but for a simple PRAGMA wal_checkpoint immediately after,
-             // it might work depending on the library's internal handling.
-             // If you encounter issues, you might need to close and reopen here.
         }
 
 
