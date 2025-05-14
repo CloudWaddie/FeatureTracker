@@ -260,11 +260,11 @@ export async function getNewSitemapsByURL(url) {
     });
 }
 
-export async function findAdditions() {
+export async function findAdditions(url) {
     const currentDb = await getDb();
     if (!currentDb) throw new Error("Database connection not available.");
     return new Promise((resolve, reject) => {
-        currentDb.all("SELECT * FROM newSitemaps WHERE url NOT IN (SELECT url FROM oldSitemaps)", (err, rows) => {
+        currentDb.all("SELECT * FROM newSitemaps WHERE url NOT IN (SELECT url FROM oldSitemaps WHERE siteURL = ?) AND siteURL = ?", [url, url], (err, rows) => {
             if (err) {
                 console.error("Error finding additions:", err.message);
                 reject(err);
@@ -275,11 +275,11 @@ export async function findAdditions() {
     });
 }
 
-export async function findDeletions() {
+export async function findDeletions(url) {
     const currentDb = await getDb();
     if (!currentDb) throw new Error("Database connection not available.");
     return new Promise((resolve, reject) => {
-        currentDb.all("SELECT * FROM oldSitemaps WHERE url NOT IN (SELECT url FROM newSitemaps)", (err, rows) => {
+        currentDb.all("SELECT * FROM oldSitemaps WHERE url NOT IN (SELECT url FROM newSitemaps WHERE siteURL = ?) AND siteURL = ?", [url, url], (err, rows) => {
             if (err) {
                 console.error("Error finding deletions:", err.message);
                 reject(err);
