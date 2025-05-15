@@ -6,8 +6,7 @@
     "dev": "node server.js",
     "build": "next build",
     "start": "env NODE_ENV=production node server.js",
-    "lint": "next lint",
-    "postinstall": "playwright install --with-deps chromium"
+    "lint": "next lint"
   },
   "dependencies": {
     "@gonetone/google-play-api": "^1.3.1",
@@ -16,7 +15,6 @@
     "mocha": "11.1.0",
     "next": "^15.3.2",
     "node-cron": "^3.0.3",
-    "playwright": "^1.52.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "rss": "^1.2.2",
