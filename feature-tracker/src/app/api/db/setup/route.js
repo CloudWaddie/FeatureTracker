@@ -73,6 +73,14 @@ export async function GET(request) {
                 }
             }
             );
+            db.run("CREATE TABLE IF NOT EXISTS models (id TEXT PRIMARY KEY, modelApiId TEXT NOT NULL, publicId TEXT, provider TEXT NOT NULL, providerId TEXT, name TEXT NOT NULL, multiModal BOOLEAN, supportsStructuredOutput BOOLEAN, baseSampleWeight INTEGER, isPrivate BOOLEAN, newModel BOOLEAN);", (err) => {
+                if (err) {
+                    console.error("Error creating models table:", err.message);
+                } else {
+                    console.log("models table created or already exists.");
+                }
+            }
+            );
         });
     }
 
