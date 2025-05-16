@@ -1,4 +1,5 @@
 import "./globals.css";
+import Link from "next/link";
 
 export const metadata = {
   title: "Feature Tracker",
@@ -25,8 +26,8 @@ export default function RootLayout({ children }) {
               <p className="text-xs">Realtime tracking of features added to AI apps</p>
             </div>
             <div className="flex flex-row gap-5">
-              <a href="/" className="text-sm mb-1">Home</a>
-              <a href="/model-checker" className="text-sm">Model Checker</a>
+              <Link href="/" className="text-sm mb-1">Home</Link>
+              <Link href="/model-checker" className="text-sm">Model Checker</Link>
             </div>
           </div>
         </div>  
