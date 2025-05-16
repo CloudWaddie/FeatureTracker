@@ -31,7 +31,8 @@ export default async function lmarenaController() {
             const jsObject = JSON.parse(jsonArrayString);
             // Update the database with the new models
             const compareresponse = await compareModels(jsObject);
-            if (!compareresponse) {
+            // Check if compareresponse is not empty
+            if (!compareresponse || (compareresponse.additions.length === 0 && compareresponse.deletions.length === 0)) {
                 console.log("No changes detected in the models.");
                 return;
             }
