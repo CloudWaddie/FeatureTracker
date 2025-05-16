@@ -311,11 +311,14 @@ export async function updateModels(models) {
  }
 
  console.log(`Attempting to insert or replace ${models.length} model records...`);
-
+ // First, clear the old models
+ await db.run("DELETE FROM sqlite_sequence where name='models'");
+ await db.run("DELETE FROM models");
  for (const model of models) {
    try {
+     // Then, insert the new model
      const sql = `
-       INSERT OR REPLACE INTO models (
+       INSERT INTO models (
          id, modelApiId, publicId, provider, providerId, name,
          multiModal, supportsStructuredOutput, baseSampleWeight, isPrivate, newModel
        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
@@ -357,6 +360,24 @@ export async function getModels() {
                 reject(err);
             } else {
                 resolve(rows);
+            }
+        });
+    });
+}
+
+export async function compareModels(newModelList) {
+    const currentDb = await getDb();
+    if (!currentDb) throw new Error("Database connection not available.");
+    return new Promise((resolve, reject) => {
+        currentDb.all("SELECT * FROM models", (err, rows) => {
+            if (err) {
+                console.error("Error fetching models:", err.message);
+                reject(err);
+            } else {
+                const oldModelList = rows;
+                const additions = newModelList.filter(newModel => !oldModelList.some(oldModel => oldModel.id === newModel.id));
+                const deletions = oldModelList.filter(oldModel => !newModelList.some(newModel => newModel.id === oldModel.id));
+                resolve({ additions, deletions });
             }
         });
     });
