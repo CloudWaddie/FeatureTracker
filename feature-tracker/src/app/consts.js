@@ -3,4 +3,5 @@ export const typeDisplayNameMap = {
     'appversion-android': 'New android app version',
     'appversion-ios': 'New ios app version',
     'sitemap': 'Updated sitemaps',
+    'lmarena': 'New models added',
   };

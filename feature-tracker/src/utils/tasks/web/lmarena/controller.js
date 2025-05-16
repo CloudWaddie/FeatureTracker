@@ -1,5 +1,5 @@
 import { chromium } from 'playwright'
-import { updateModels } from '../../../db.js'
+import { updateModels, compareModels, updateFeed } from '../../../db.js'
 
 export default async function lmarenaController() {
     let browser;
@@ -30,7 +30,29 @@ export default async function lmarenaController() {
         try {
             const jsObject = JSON.parse(jsonArrayString);
             // Update the database with the new models
+            const compareresponse = await compareModels(jsObject);
+            if (!compareresponse) {
+                console.log("No changes detected in the models.");
+                return;
+            }
+            // If there are changes, update the models in the database
+            console.log("Response from compareModels:", compareresponse);
             await updateModels(jsObject);
+            // Format details string for the feed - Added models, removed models using the id from the response
+            const addedModels = compareresponse.additions.map(model => model.id).join(', ');
+            const removedModels = compareresponse.deletions.map(model => model.id).join(', ');
+            const formatedDetails = `Added models: ${addedModels} Removed models: ${removedModels}`;
+            console.log("Formatted details for feed:", formatedDetails);
+            // Update feed - type, details, appId, date
+            const dataToUpdate = {
+                type: 'lmarena',
+                details: formatedDetails,
+                appId: 'lmarena',
+                date: new Date().toISOString()
+            }
+            await updateFeed(dataToUpdate);
+            console.log("Feed updated successfully with the new or removed models.");
+
         } catch (error) {
             console.error("Error parsing the string:", error);
         }
