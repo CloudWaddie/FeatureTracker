@@ -38,7 +38,7 @@ export default async function lmarenaController() {
             // If there are changes, update the models in the database
             console.log("Response from compareModels:", compareresponse);
             await updateModels(jsObject);
-            // Formate details string for the feed - Added models, removed models using the id from the response
+            // Format details string for the feed - Added models, removed models using the id from the response
             const addedModels = compareresponse.additions.map(model => model.id).join(', ');
             const removedModels = compareresponse.deletions.map(model => model.id).join(', ');
             const formatedDetails = `Added models: ${addedModels} Removed models: ${removedModels}`;
