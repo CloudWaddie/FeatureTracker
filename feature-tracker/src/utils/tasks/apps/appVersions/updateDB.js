@@ -1,4 +1,4 @@
-import { updateFeed, updateLastUpdated } from "../../../utils/db.js"; // <-- Import the updateFeed function from db.js
+import { updateFeed, updateLastUpdated } from "../../../db.js"; // <-- Import the updateFeed function from db.js
 
 export default async function updateDB(data) { // <-- Make the function async
     console.log("Updating the database...");
