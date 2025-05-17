@@ -24,7 +24,7 @@ export default async function geminiDatesController() {
         const previousDatesRaw = await getMiscData("geminiDates");
         if (!previousDatesRaw || previousDatesRaw.length === 0) {
             console.log("No previous dates found in misc data.");
-            await updateMiscData("geminiDates", JSON.stringify(dates));
+            await updateMiscData("geminiDates", JSON.stringify(dates.map(date => date.replace(/\./g, "-"))));
             console.log("Successfully updated Gemini dates in misc data.");
             return;
         }
