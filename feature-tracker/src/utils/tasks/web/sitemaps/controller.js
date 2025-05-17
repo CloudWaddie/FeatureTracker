@@ -61,7 +61,6 @@ export default async function sitemapController() {
                 type: 'sitemap',
                 details: `Additions: ${readableAdditions}, Deletions: ${readableDeletions}`,
                 appId: url,
-                date: new Date().toISOString(),
             };
             //console.log(`Data to add to feed for ${url}:`, dataToAddToFeed);
             await updateFeed(dataToAddToFeed);

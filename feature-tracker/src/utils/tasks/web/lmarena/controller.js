@@ -49,7 +49,6 @@ export default async function lmarenaController() {
                 type: 'lmarena',
                 details: formatedDetails,
                 appId: 'lmarena',
-                date: new Date().toISOString()
             }
             await updateFeed(dataToUpdate);
             console.log("Feed updated successfully with the new or removed models.");

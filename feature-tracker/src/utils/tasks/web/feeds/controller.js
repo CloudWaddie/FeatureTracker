@@ -2,7 +2,6 @@ import Parser from "rss-parser";
 import fs from "fs";
 import { cwd } from "process";
 import { updateFeed, updateOldFeeds, updateNewFeeds, clearNewFeedsByURL, clearOldFeedsByURL, findAdditionsFeeds, findDeletionsFeeds } from '../../../../utils/db.js';
-import { clear } from "console";
 
 export default async function feedController() {
     const configPath = `${cwd()}/src/utils/tasks/web/feeds/config.txt`;
@@ -35,6 +34,10 @@ export default async function feedController() {
             console.error(`Error fetching feed from ${url}:`, error);
             continue;
         }
+        if (!feed || !feed.items || feed.items.length === 0) {
+            console.error(`No items found in the feed from ${url}`);
+            continue;
+        }
         await clearNewFeedsByURL(feed.link);
         await updateNewFeeds(feed);
         const additions = await findAdditionsFeeds(feed.link);
@@ -52,7 +55,6 @@ export default async function feedController() {
                 type: 'rssFeed',
                 details: `Additions: ${readableAdditions}, Deletions: ${readableDeletions}`,
                 appId: feed.link,
-                date: new Date().toISOString(),
             };
             await updateFeed(dataToAddToFeed);
         }
