@@ -54,7 +54,6 @@ export default async function geminiDatesController() {
             type: 'geminiDates',
             details: formatedDetails,
             appId: 'Gemini Web App',
-            date: new Date().toISOString()
         }
         await updateFeed(dataToUpdate);
         console.log("Feed updated successfully with the new or removed dates.");
