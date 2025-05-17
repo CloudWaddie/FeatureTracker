@@ -89,6 +89,22 @@ export async function GET(request) {
                 }
             }
             );
+            db.run("CREATE TABLE IF NOT EXISTS oldFeeds (id INTEGER PRIMARY KEY AUTOINCREMENT, siteURL TEXT NOT NULL, url TEXT NOT NULL, lastUpdated TEXT);", (err) => {
+                if (err) {
+                    console.error("Error creating oldFeeds table:", err.message);
+                } else {
+                    console.log("oldFeeds table created or already exists.");
+                }
+            }
+            );
+            db.run("CREATE TABLE IF NOT EXISTS newFeeds (id INTEGER PRIMARY KEY AUTOINCREMENT, siteURL TEXT NOT NULL, url TEXT NOT NULL, lastUpdated TEXT);", (err) => {
+                if (err) {
+                    console.error("Error creating newFeeds table:", err.message);
+                } else {
+                    console.log("newFeeds table created or already exists.");
+                }
+            }
+            );
         });
     }
 

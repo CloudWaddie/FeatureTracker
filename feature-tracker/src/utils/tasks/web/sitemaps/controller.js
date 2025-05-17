@@ -1,7 +1,7 @@
 import Sitemapper from 'sitemapper';
 import fs from "fs";
 import { cwd } from "process";
-import { updateNewSitemaps, clearNewSitemapsByURL, findAdditions, findDeletions, clearOldSitemapsByURL, updateOldSitemaps, updateFeed } from '../../../../utils/db.js';
+import { updateNewSitemaps, clearNewSitemapsByURL, findAdditionsSitemaps, findDeletionsSitemaps, clearOldSitemapsByURL, updateOldSitemaps, updateFeed } from '../../../../utils/db.js';
 
 export default async function sitemapController() {
     const configPath = `${cwd()}/src/utils/tasks/web/sitemaps/config.txt`;
@@ -44,8 +44,8 @@ export default async function sitemapController() {
         }
         await clearNewSitemapsByURL(url);
         await updateNewSitemaps(sites);
-        const additions = await findAdditions(url);
-        const deletions = await findDeletions(url);
+        const additions = await findAdditionsSitemaps(url);
+        const deletions = await findDeletionsSitemaps(url);
         await clearOldSitemapsByURL(url);
         await updateOldSitemaps(sites);
         if (additions.length === 0 && deletions.length === 0) {
