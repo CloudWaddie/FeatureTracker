@@ -81,6 +81,14 @@ export async function GET(request) {
                 }
             }
             );
+            db.run("CREATE TABLE IF NOT EXISTS misc (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT NOT NULL UNIQUE, value TEXT NOT NULL);", (err) => {
+                if (err) {
+                    console.error("Error creating misc table:", err.message);
+                } else {
+                    console.log("misc table created or already exists.");
+                }
+            }
+            );
         });
     }
 

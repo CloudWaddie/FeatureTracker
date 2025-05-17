@@ -4,4 +4,5 @@ export const typeDisplayNameMap = {
     'appversion-ios': 'New ios app version',
     'sitemap': 'Updated sitemaps',
     'lmarena': 'New models added',
+    'geminiDates': 'New date placholders added',
   };
