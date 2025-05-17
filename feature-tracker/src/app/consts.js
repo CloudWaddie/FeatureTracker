@@ -5,4 +5,5 @@ export const typeDisplayNameMap = {
     'sitemap': 'Updated sitemaps',
     'lmarena': 'New models added',
     'geminiDates': 'New date placholders added',
+    'rssFeed': 'Updated RSS feeds',
   };
