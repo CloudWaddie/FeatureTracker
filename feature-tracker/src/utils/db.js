@@ -382,3 +382,34 @@ export async function compareModels(newModelList) {
         });
     });
 }
+
+export async function getMiscData(type) {
+    const currentDb = await getDb();
+    if (!currentDb) throw new Error("Database connection not available.");
+    return new Promise((resolve, reject) => {
+        currentDb.all("SELECT * FROM misc WHERE type = ?", [type], (err, rows) => {
+            if (err) {
+                console.error("Error fetching misc data:", err.message);
+                reject(err);
+            } else {
+                resolve(rows);
+            }
+        });
+    });
+}
+
+export async function updateMiscData(type, value) {
+    const currentDb = await getDb();
+    if (!currentDb) throw new Error("Database connection not available.");
+    return new Promise((resolve, reject) => {
+        currentDb.run("INSERT INTO misc (type, value) VALUES (?, ?) ON CONFLICT(type) DO UPDATE SET value = excluded.value;", [type, value], function(err) {
+            if (err) {
+                console.error("Error updating misc data:", err.message);
+                reject(err);
+            } else {
+                console.log("Misc data updated successfully:", this.changes);
+                resolve(this.changes);
+            }
+        });
+    });
+}
