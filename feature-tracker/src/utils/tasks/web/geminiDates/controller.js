@@ -28,7 +28,7 @@ export default async function geminiDatesController() {
             console.log("Successfully updated Gemini dates in misc data.");
             return;
         }
-        const previousDatesToCompare = JSON.parse(Array.isArray(previousDatesRaw) ? previousDatesRaw[0].value : []);
+        const previousDatesToCompare = JSON.parse(Array.isArray(previousDatesRaw) && previousDatesRaw[0]?.value ? previousDatesRaw[0].value : '[]');
 
         // Format the newly fetched dates consistently
         let currentDatesToCompare = dates.map(date => date.replace(/\./g, "-"));
