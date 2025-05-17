@@ -10,8 +10,6 @@ export default async function getLastUpdated(app) { // <-- Make the function asy
   
       const data = await response.json(); // <-- await parsing the JSON response
 
-      console.log("Last updated date:", data); // Log the last updated date
-
       // Check if lastUpdated is null or undefined
       if (data.lastUpdated === null || data.lastUpdated === undefined) {
         console.warn("No last updated date found for this app. Defaulting to 0.");
