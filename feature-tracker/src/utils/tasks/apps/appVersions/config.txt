@@ -8,6 +8,8 @@ com.google.android.googlequicksearchbox
 ai.mistral.chat
 ai.qwenlm.chat.android
 com.microsoft.copilot
+com.google.android.apps.labs.language.tailwind
+com.google.android.apps.bard
 
 [ios]
 # Deepseek
@@ -26,3 +28,7 @@ com.microsoft.copilot
 #6743778442
 # Copilot
 6472538445
+# NotebookLM
+6737527615
+# Gemini
+6477489729

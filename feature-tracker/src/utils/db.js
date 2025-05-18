@@ -149,25 +149,39 @@ export async function updateLastUpdated(appId, lastUpdated) {
 export async function updateOldSitemaps(sites) {
     const currentDb = await getDb();
     if (!currentDb) {
-        console.error("Database connection not available for updateOldSitemaps.");
-        return; // Or handle error appropriately
+        const errorMsg = "Database connection not available for updateOldSitemaps.";
+        console.error(errorMsg);
+        return Promise.reject(new Error(errorMsg));
     }
-    if (sites && sites.sites) {
-        await Promise.all(
-            sites.sites.map(site => {
-                return new Promise((resolve, reject) => {
-                    currentDb.run("INSERT INTO oldSitemaps (siteURL, url, lastUpdated) VALUES (?, ?, ?)", [sites.url, site.loc, site.lastmod], function(err) {
-                        if (err) {
-                            console.error("Error updating old sitemaps:", err.message);
-                            reject(err);
-                        } else {
-                            resolve();
-                        }
-                    });
+    if (!sites || !sites.sites || !Array.isArray(sites.sites) || typeof sites.url !== 'string') {
+        const errorMsg = "Invalid input for updateOldSitemaps: Expected an object with a 'sites' array and a 'url' string.";
+        console.error(errorMsg);
+        return Promise.reject(new Error(errorMsg));
+    }
+
+    if (sites.sites.length === 0) {
+        console.log("No old sitemap entries to process for updateOldSitemaps.");
+        return Promise.resolve();
+    }
+
+    return Promise.all(
+        sites.sites.map(site => {
+            return new Promise((resolve, reject) => {
+                if (!site || typeof site.loc !== 'string') {
+                    console.warn("Skipping invalid old sitemap entry in updateOldSitemaps:", site);
+                    return resolve(); // Resolve to not break Promise.all for one bad entry
+                }
+                currentDb.run("INSERT INTO oldSitemaps (siteURL, url, lastUpdated) VALUES (?, ?, ?)", [sites.url, site.loc, site.lastmod], function(err) {
+                    if (err) {
+                        console.error("Error updating old sitemaps entry:", err.message);
+                        reject(err);
+                    } else {
+                        resolve();
+                    }
                 });
-            })
-        );
-    }
+            });
+        })
+    );
 }
 
 export async function clearOldSitemapsByURL(url) {
@@ -214,16 +228,39 @@ export async function getOldSitemapsByURL(url) {
 export async function updateNewSitemaps(sites) {
     const currentDb = await getDb();
     if (!currentDb) {
-        console.error("Database connection not available for updateNewSitemaps.");
-        return; // Or handle error appropriately
+        const errorMsg = "Database connection not available for updateNewSitemaps.";
+        console.error(errorMsg);
+        return Promise.reject(new Error(errorMsg));
     }
-    for (const site of sites.sites) {
-        currentDb.run("INSERT INTO newSitemaps (siteURL, url, lastUpdated) VALUES (?, ?, ?)", [sites.url, site.loc, site.lastmod], function(err) {
-            if (err) {
-                console.error("Error updating New sitemaps:", err.message);
-            }
-        });
+    if (!sites || !sites.sites || !Array.isArray(sites.sites) || typeof sites.url !== 'string') {
+        const errorMsg = "Invalid input: Expected an object with a 'sites' array and a 'url' string.";
+        console.error(errorMsg);
+        return Promise.reject(new Error(errorMsg));
     }
+
+    if (sites.sites.length === 0) {
+        console.log("No new sitemap entries to process.");
+        return Promise.resolve();
+    }
+
+    return Promise.all(
+        sites.sites.map(site => {
+            return new Promise((resolve, reject) => {
+                if (!site || typeof site.loc !== 'string') {
+                    console.warn("Skipping invalid sitemap entry:", site);
+                    return resolve(); // Resolve to not break Promise.all for one bad entry, or reject if strictness is needed
+                }
+                currentDb.run("INSERT INTO newSitemaps (siteURL, url, lastUpdated) VALUES (?, ?, ?)", [sites.url, site.loc, site.lastmod], function(err) {
+                    if (err) {
+                        console.error("Error updating new sitemaps entry:", err.message);
+                        reject(err);
+                    } else {
+                        resolve();
+                    }
+                });
+            });
+        })
+    );
 }
 
 export async function clearNewSitemapsByURL(url) {
@@ -298,56 +335,103 @@ export async function findDeletionsSitemaps(url) {
 }
 
 export async function updateModels(models) {
- if (!Array.isArray(models)) {
-   console.error("Invalid input: Expected an array of model objects.");
-   return;
- }
+    if (!Array.isArray(models)) {
+        const errorMsg = "Invalid input: Expected an array of model objects.";
+        console.error(errorMsg);
+        return Promise.reject(new Error(errorMsg));
+    }
 
- // Get the database connection
- const db = await getDb();
- if (!db) {
-     console.error("Database connection not available.");
-     return; // Or throw an error
- }
+    const db = await getDb();
+    if (!db) {
+        const errorMsg = "Database connection not available for updateModels.";
+        console.error(errorMsg);
+        return Promise.reject(new Error(errorMsg));
+    }
 
- console.log(`Attempting to insert or replace ${models.length} model records...`);
- // First, clear the old models
- await db.run("DELETE FROM sqlite_sequence where name='models'");
- await db.run("DELETE FROM models");
- for (const model of models) {
-   try {
-     // Then, insert the new model
-     const sql = `
-       INSERT INTO models (
-         id, modelApiId, publicId, provider, providerId, name,
-         multiModal, supportsStructuredOutput, baseSampleWeight, isPrivate, newModel
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-     `;
+    console.log(`Attempting to insert or replace ${models.length} model records...`);
 
-     const values = [
-       model.id || null,
-       model.modelApiId || null,
-       model.publicId || null,
-       model.provider || null,
-       model.providerId || null,
-       model.name || null,
-       model.multiModal !== undefined ? model.multiModal : null,
-       model.supportsStructuredOutput !== undefined ? model.supportsStructuredOutput : null,
-       model.baseSampleWeight !== undefined ? model.baseSampleWeight : null,
-       model.isPrivate !== undefined ? model.isPrivate : null,
-       model.newModel !== undefined ? model.newModel : null
-     ];
+    return new Promise((resolve, reject) => {
+        db.serialize(() => { // Ensures sequential execution of transaction commands
+            db.run("BEGIN TRANSACTION;", (err) => {
+                if (err) {
+                    console.error("Failed to begin transaction:", err.message);
+                    return reject(err);
+                }
 
-     await db.run(sql, values);
+                db.run("DELETE FROM sqlite_sequence where name='models'", (errSeq) => {
+                    if (errSeq) {
+                        console.error("Error resetting models sequence:", errSeq.message);
+                        return db.run("ROLLBACK;", () => reject(errSeq));
+                    }
 
-     console.log(`Successfully processed model: ${model.id}`);
+                    db.run("DELETE FROM models", (errDel) => {
+                        if (errDel) {
+                            console.error("Error deleting models:", errDel.message);
+                            return db.run("ROLLBACK;", () => reject(errDel));
+                        }
 
-   } catch (error) {
-     console.error(`Error processing model ${model.id}:`, error);
-   }
- }
+                        if (models.length === 0) {
+                            // If no models to insert, commit the deletions and resolve
+                            return db.run("COMMIT;", (commitErr) => {
+                                if (commitErr) {
+                                    console.error("Failed to commit transaction after clearing models:", commitErr.message);
+                                    return db.run("ROLLBACK;", () => reject(commitErr));
+                                }
+                                console.log("Models table cleared successfully as no new models were provided.");
+                                resolve();
+                            });
+                        }
+                        
+                        const insertPromises = models.map(model => {
+                            return new Promise((resolveInsert, rejectInsert) => {
+                                const sql = `
+                                    INSERT INTO models (
+                                        id, modelApiId, publicId, provider, providerId, name,
+                                        multiModal, supportsStructuredOutput, baseSampleWeight, isPrivate, newModel
+                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                                `;
+                                const values = [
+                                    model.id || null, model.modelApiId || null, model.publicId || null,
+                                    model.provider || null, model.providerId || null, model.name || null,
+                                    model.multiModal !== undefined ? model.multiModal : null,
+                                    model.supportsStructuredOutput !== undefined ? model.supportsStructuredOutput : null,
+                                    model.baseSampleWeight !== undefined ? model.baseSampleWeight : null,
+                                    model.isPrivate !== undefined ? model.isPrivate : null,
+                                    model.newModel !== undefined ? model.newModel : null
+                                ];
+                                db.run(sql, values, function(insertErr) {
+                                    if (insertErr) {
+                                        console.error(`Error processing model ${model.id || 'unknown'}:`, insertErr.message);
+                                        rejectInsert(insertErr);
+                                    } else {
+                                        // console.log(`Successfully processed model: ${model.id}`); // Optional: too verbose for many models
+                                        resolveInsert();
+                                    }
+                                });
+                            });
+                        });
 
- console.log("Finished attempting to process all model records.");
+                        Promise.all(insertPromises)
+                            .then(() => {
+                                db.run("COMMIT;", (commitErr) => {
+                                    if (commitErr) {
+                                        console.error("Failed to commit transaction:", commitErr.message);
+                                        db.run("ROLLBACK;", () => reject(commitErr));
+                                    } else {
+                                        console.log("Finished processing all model records successfully.");
+                                        resolve();
+                                    }
+                                });
+                            })
+                            .catch(insertError => {
+                                console.error("Error during model inserts, rolling back:", insertError.message);
+                                db.run("ROLLBACK;", () => reject(insertError));
+                            });
+                    });
+                });
+            });
+        });
+    });
 }
 
 export async function getModels() {
@@ -417,15 +501,36 @@ export async function updateMiscData(type, value) {
 export async function updateOldFeeds(feeds) {
     const currentDb = await getDb();
     if (!currentDb) {
-        console.error("Database connection not available for updateOldFeeds.");
-        return Promise.reject(new Error("Database connection not available"));
+        const errorMsg = "Database connection not available for updateOldFeeds.";
+        console.error(errorMsg);
+        return Promise.reject(new Error(errorMsg));
     }
+    if (!feeds || !feeds.items || !Array.isArray(feeds.items) || typeof feeds.link !== 'string') {
+        const errorMsg = "Invalid input for updateOldFeeds: Expected an object with an 'items' array and a 'link' string.";
+        console.error(errorMsg);
+        return Promise.reject(new Error(errorMsg));
+    }
+
+    if (feeds.items.length === 0) {
+        console.log("No old feed items to process for updateOldFeeds.");
+        return Promise.resolve();
+    }
+
     return Promise.all(
         feeds.items.map(item => {
             return new Promise((resolve, reject) => {
-                currentDb.run("INSERT INTO oldFeeds (siteURL, url, lastUpdated) VALUES (?, ?, ?)", [feeds.link, item.link, Math.floor((new Date(item.pubDate)).getTime() / 1000)], function(err) {
+                if (!item || typeof item.link !== 'string' || typeof item.pubDate === 'undefined') {
+                    console.warn("Skipping invalid old feed item in updateOldFeeds:", item);
+                    return resolve(); // Resolve to not break Promise.all for one bad entry
+                }
+                const pubDateTimestamp = Math.floor((new Date(item.pubDate)).getTime() / 1000);
+                if (isNaN(pubDateTimestamp)) {
+                    console.warn("Skipping old feed item with invalid pubDate in updateOldFeeds:", item);
+                    return resolve();
+                }
+                currentDb.run("INSERT INTO oldFeeds (siteURL, url, lastUpdated) VALUES (?, ?, ?)", [feeds.link, item.link, pubDateTimestamp], function(err) {
                     if (err) {
-                        console.error("Error updating old feeds:", err.message);
+                        console.error("Error updating old feeds entry:", err.message);
                         reject(err);
                     } else {
                         resolve();
@@ -480,15 +585,36 @@ export async function getOldFeedsByURL(url) {
 export async function updateNewFeeds(feeds) {
     const currentDb = await getDb();
     if (!currentDb) {
-        console.error("Database connection not available for updateNewFeeds.");
-        return Promise.reject(new Error("Database connection not available"));
+        const errorMsg = "Database connection not available for updateNewFeeds.";
+        console.error(errorMsg);
+        return Promise.reject(new Error(errorMsg));
     }
+    if (!feeds || !feeds.items || !Array.isArray(feeds.items) || typeof feeds.link !== 'string') {
+        const errorMsg = "Invalid input for updateNewFeeds: Expected an object with an 'items' array and a 'link' string.";
+        console.error(errorMsg);
+        return Promise.reject(new Error(errorMsg));
+    }
+
+    if (feeds.items.length === 0) {
+        console.log("No new feed items to process for updateNewFeeds.");
+        return Promise.resolve();
+    }
+
     return Promise.all(
         feeds.items.map(item => {
             return new Promise((resolve, reject) => {
-                currentDb.run("INSERT INTO newFeeds (siteURL, url, lastUpdated) VALUES (?, ?, ?)", [feeds.link, item.link, Math.floor((new Date(item.pubDate)).getTime() / 1000)], function(err) {
+                if (!item || typeof item.link !== 'string' || typeof item.pubDate === 'undefined') {
+                    console.warn("Skipping invalid new feed item in updateNewFeeds:", item);
+                    return resolve(); // Resolve to not break Promise.all for one bad entry
+                }
+                const pubDateTimestamp = Math.floor((new Date(item.pubDate)).getTime() / 1000);
+                if (isNaN(pubDateTimestamp)) {
+                    console.warn("Skipping new feed item with invalid pubDate in updateNewFeeds:", item);
+                    return resolve();
+                }
+                currentDb.run("INSERT INTO newFeeds (siteURL, url, lastUpdated) VALUES (?, ?, ?)", [feeds.link, item.link, pubDateTimestamp], function(err) {
                     if (err) {
-                        console.error("Error updating new feeds:", err.message);
+                        console.error("Error updating new feeds entry:", err.message);
                         reject(err);
                     } else {
                         resolve();
