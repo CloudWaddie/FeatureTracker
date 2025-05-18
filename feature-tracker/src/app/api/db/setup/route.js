@@ -57,7 +57,7 @@ export async function GET(request) {
                 }
             }
             );
-            db.run("CREATE TABLE IF NOT EXISTS oldSitemaps (id INTEGER PRIMARY KEY AUTOINCREMENT, siteURL TEXT NOT NULL, url TEXT NOT NULL, lastUpdated TEXT);", (err) => {
+            db.run("CREATE TABLE IF NOT EXISTS oldSitemaps (id INTEGER PRIMARY KEY AUTOINCREMENT, siteURL TEXT NOT NULL, url TEXT NOT NULL, lastUpdated INTEGER);", (err) => {
                 if (err) {
                     console.error("Error creating oldSitemaps table:", err.message);
                 } else {
@@ -65,7 +65,7 @@ export async function GET(request) {
                 }
             }
             );
-            db.run("CREATE TABLE IF NOT EXISTS newSitemaps (id INTEGER PRIMARY KEY AUTOINCREMENT, siteURL TEXT NOT NULL, url TEXT NOT NULL, lastUpdated TEXT);", (err) => {
+            db.run("CREATE TABLE IF NOT EXISTS newSitemaps (id INTEGER PRIMARY KEY AUTOINCREMENT, siteURL TEXT NOT NULL, url TEXT NOT NULL, lastUpdated INTEGER);", (err) => {
                 if (err) {
                     console.error("Error creating newSitemaps table:", err.message);
                 } else {
@@ -89,7 +89,7 @@ export async function GET(request) {
                 }
             }
             );
-            db.run("CREATE TABLE IF NOT EXISTS oldFeeds (id INTEGER PRIMARY KEY AUTOINCREMENT, siteURL TEXT NOT NULL, url TEXT NOT NULL, lastUpdated TEXT);", (err) => {
+            db.run("CREATE TABLE IF NOT EXISTS oldFeeds (id INTEGER PRIMARY KEY AUTOINCREMENT, siteURL TEXT NOT NULL, url TEXT NOT NULL, lastUpdated INTEGER);", (err) => {
                 if (err) {
                     console.error("Error creating oldFeeds table:", err.message);
                 } else {
@@ -97,7 +97,7 @@ export async function GET(request) {
                 }
             }
             );
-            db.run("CREATE TABLE IF NOT EXISTS newFeeds (id INTEGER PRIMARY KEY AUTOINCREMENT, siteURL TEXT NOT NULL, url TEXT NOT NULL, lastUpdated TEXT);", (err) => {
+            db.run("CREATE TABLE IF NOT EXISTS newFeeds (id INTEGER PRIMARY KEY AUTOINCREMENT, siteURL TEXT NOT NULL, url TEXT NOT NULL, lastUpdated INTEGER);", (err) => {
                 if (err) {
                     console.error("Error creating newFeeds table:", err.message);
                 } else {
