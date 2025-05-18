@@ -267,7 +267,7 @@ export async function getNewSitemapsByURL(url) {
     });
 }
 
-export async function findAdditions(url) {
+export async function findAdditionsSitemaps(url) {
     const currentDb = await getDb();
     if (!currentDb) throw new Error("Database connection not available.");
     return new Promise((resolve, reject) => {
@@ -282,7 +282,7 @@ export async function findAdditions(url) {
     });
 }
 
-export async function findDeletions(url) {
+export async function findDeletionsSitemaps(url) {
     const currentDb = await getDb();
     if (!currentDb) throw new Error("Database connection not available.");
     return new Promise((resolve, reject) => {
@@ -409,6 +409,147 @@ export async function updateMiscData(type, value) {
             } else {
                 console.log("Misc data updated successfully:", this.changes);
                 resolve(this.changes);
+            }
+        });
+    });
+}
+
+export async function updateOldFeeds(feeds) {
+    const currentDb = await getDb();
+    if (!currentDb) {
+        console.error("Database connection not available for updateOldFeeds.");
+        return Promise.reject(new Error("Database connection not available"));
+    }
+    return Promise.all(
+        feeds.items.map(item => {
+            return new Promise((resolve, reject) => {
+                currentDb.run("INSERT INTO oldFeeds (siteURL, url, lastUpdated) VALUES (?, ?, ?)", [feeds.link, item.link, Math.floor((new Date(item.pubDate)).getTime() / 1000)], function(err) {
+                    if (err) {
+                        console.error("Error updating old feeds:", err.message);
+                        reject(err);
+                    } else {
+                        resolve();
+                    }
+                });
+            });
+        })
+    );
+}
+
+export async function clearOldFeedsByURL(url) {
+    const currentDb = await getDb();
+    if (!currentDb) throw new Error("Database connection not available.");
+    return new Promise((resolve, reject) => {
+        currentDb.serialize(() => {
+            currentDb.run("DELETE FROM sqlite_sequence where name='oldFeeds'", function(err) {
+                if (err) {
+                    console.error("Error resetting old feeds sequence:", err.message);
+                    // Don't reject here, main operation is deleting from oldFeeds
+                } else {
+                    console.log("Old feeds sequence reset successfully");
+                }
+            });
+            currentDb.run("DELETE FROM oldFeeds WHERE siteURL = ?", [url], function(err) {
+                if (err) {
+                    console.error("Error clearing old feeds by URL:", err.message);
+                    reject(err);
+                } else {
+                    console.log("Old feeds cleared successfully!");
+                    resolve(this.changes);
+                }
+            });
+        });
+    });
+}
+
+export async function getOldFeedsByURL(url) {
+    const currentDb = await getDb();
+    if (!currentDb) throw new Error("Database connection not available.");
+    return new Promise((resolve, reject) => {
+        currentDb.all("SELECT * FROM oldFeeds WHERE siteURL = ?", [url], (err, rows) => {
+            if (err) {
+                console.error("Error fetching old feeds by URL:", err.message);
+                reject(err);
+            } else {
+                resolve(rows);
+            }
+        });
+    });
+}
+
+export async function updateNewFeeds(feeds) {
+    const currentDb = await getDb();
+    if (!currentDb) {
+        console.error("Database connection not available for updateNewFeeds.");
+        return Promise.reject(new Error("Database connection not available"));
+    }
+    return Promise.all(
+        feeds.items.map(item => {
+            return new Promise((resolve, reject) => {
+                currentDb.run("INSERT INTO newFeeds (siteURL, url, lastUpdated) VALUES (?, ?, ?)", [feeds.link, item.link, Math.floor((new Date(item.pubDate)).getTime() / 1000)], function(err) {
+                    if (err) {
+                        console.error("Error updating new feeds:", err.message);
+                        reject(err);
+                    } else {
+                        resolve();
+                    }
+                });
+            });
+        })
+    );
+}
+
+export async function clearNewFeedsByURL(url) {
+    const currentDb = await getDb();
+    if (!currentDb) throw new Error("Database connection not available.");
+    return new Promise((resolve, reject) => {
+        currentDb.serialize(() => {
+            currentDb.run("DELETE FROM sqlite_sequence where name='newFeeds'", function(err) {
+                if (err) {
+                    console.error("Error resetting new feeds sequence:", err.message);
+                    // Don't reject here, main operation is deleting from newFeeds
+                } else {
+                    console.log("New feeds sequence reset successfully");
+                }
+            });
+            currentDb.run("DELETE FROM newFeeds WHERE siteURL = ?", [url], function(err) {
+                if (err) {
+                    console.error("Error clearing new feeds by URL:", err.message);
+                    reject(err);
+                } else {
+                    console.log("New feeds cleared successfully!");
+                    resolve(this.changes);
+                }
+            });
+        });
+    });
+}
+
+export async function findAdditionsFeeds(url) {
+    const currentDb = await getDb();
+    if (!currentDb) throw new Error("Database connection not available.");
+    return new Promise((resolve, reject) => {
+        currentDb.all("SELECT * FROM newFeeds WHERE url NOT IN (SELECT url FROM oldFeeds WHERE siteURL = ?) AND siteURL = ?", [url, url], (err, rows) => {
+            if (err) {
+                console.error("Error finding additions:", err.message);
+                reject(err);
+            } else {
+                resolve(rows);
+            }
+        });
+    });
+}
+
+export async function findDeletionsFeeds(url) {
+    const currentDb = await getDb();
+    if (!currentDb) throw new Error("Database connection not available.");
+    return new Promise((resolve, reject) => {
+        currentDb.all("SELECT * FROM oldFeeds WHERE url NOT IN (SELECT url FROM newFeeds WHERE siteURL = ?) AND siteURL = ?", [url, url], (err, rows) => {
+            if (err) {
+                console.error("Error finding deletions:", err.message);
+                reject(err);
+            } else {
+                resolve(rows);
             }
         });
     });
