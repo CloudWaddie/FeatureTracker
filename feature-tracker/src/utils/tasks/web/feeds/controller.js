@@ -56,7 +56,11 @@ export default async function feedController() {
                 details: `Additions: ${readableAdditions}, Deletions: ${readableDeletions}`,
                 appId: feed.link,
             };
-            await updateFeed(dataToAddToFeed);
+            try {
+                await updateFeed(dataToAddToFeed);
+            } catch (error) {
+                console.error(`Error updating feed for ${url}:`, error);
+            }
         }
     }
     // Add your feed-related tasks here
