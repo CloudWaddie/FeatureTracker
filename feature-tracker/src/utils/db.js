@@ -418,15 +418,22 @@ export async function updateOldFeeds(feeds) {
     const currentDb = await getDb();
     if (!currentDb) {
         console.error("Database connection not available for updateOldFeeds.");
-        return; // Or handle error appropriately
+        return Promise.reject(new Error("Database connection not available"));
     }
-    for (const items of feeds.items) {
-        currentDb.run("INSERT INTO oldFeeds (siteURL, url, lastUpdated) VALUES (?, ?, ?)", [feeds.link, items.link, Math.floor((new Date(items.pubDate)).getTime() / 1000)], function(err) {
-            if (err) {
-                console.error("Error updating old feeds:", err.message);
-            }
-        });
-    }
+    return Promise.all(
+        feeds.items.map(item => {
+            return new Promise((resolve, reject) => {
+                currentDb.run("INSERT INTO oldFeeds (siteURL, url, lastUpdated) VALUES (?, ?, ?)", [feeds.link, item.link, Math.floor((new Date(item.pubDate)).getTime() / 1000)], function(err) {
+                    if (err) {
+                        console.error("Error updating old feeds:", err.message);
+                        reject(err);
+                    } else {
+                        resolve();
+                    }
+                });
+            });
+        })
+    );
 }
 
 export async function clearOldFeedsByURL(url) {
@@ -474,15 +481,22 @@ export async function updateNewFeeds(feeds) {
     const currentDb = await getDb();
     if (!currentDb) {
         console.error("Database connection not available for updateNewFeeds.");
-        return; // Or handle error appropriately
+        return Promise.reject(new Error("Database connection not available"));
     }
-    for (const items of feeds.items) {
-        currentDb.run("INSERT INTO newFeeds (siteURL, url, lastUpdated) VALUES (?, ?, ?)", [feeds.link, items.link, Math.floor((new Date(items.pubDate)).getTime() / 1000)], function(err) {
-            if (err) {
-                console.error("Error updating new feeds:", err.message);
-            }
-        });
-    }
+    return Promise.all(
+        feeds.items.map(item => {
+            return new Promise((resolve, reject) => {
+                currentDb.run("INSERT INTO newFeeds (siteURL, url, lastUpdated) VALUES (?, ?, ?)", [feeds.link, item.link, Math.floor((new Date(item.pubDate)).getTime() / 1000)], function(err) {
+                    if (err) {
+                        console.error("Error updating new feeds:", err.message);
+                        reject(err);
+                    } else {
+                        resolve();
+                    }
+                });
+            });
+        })
+    );
 }
 
 export async function clearNewFeedsByURL(url) {
