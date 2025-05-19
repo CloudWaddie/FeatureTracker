@@ -3,6 +3,15 @@
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { typeDisplayNameMap } from './consts';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 function PageContent() {
   const [updates, setUpdates] = useState(null);
@@ -98,38 +107,45 @@ function PageContent() {
     <>
       <p>Last checked for updates: {lastChecked ? timeSince.format(-secondsDiff, "second") : 'Never'}</p>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {updates.map((update) => {
+        {updates.filter(update => !update.isHidden).map((update) => {
           const typeDisplayName = typeDisplayNameMap[update.type] || update.type;
           return (
-            <div className="p-4 bg-gray-950 rounded shadow border border-solid border-white rounded-xl" key={update.id}>
-              <h2 className="text-xl font-bold" id={'update-' + update.id}>{typeDisplayName}: {update.appId}</h2>
-              <p className="text-sm">{update.details}</p>
-              <p className="text-xs text-gray-500">{new Date(update.date).toLocaleString()}</p>
-            </div>
+            <Card key={update.id}>
+              <CardHeader>
+                <CardTitle>{typeDisplayName}</CardTitle>
+                <CardDescription>{update.appId}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p>{update.details}</p>
+              </CardContent>
+              <CardFooter>
+                <p>{new Date(update.date).toLocaleString()}</p>
+              </CardFooter>
+            </Card> 
           );
         })}
       </div>
       <div className="flex justify-center space-x-4 mt-4">
-        <button
+        <Button
           onClick={() => {
             const newPage = Math.max(1, currentPage - 1);
             router.push(`/?page=${newPage}`);
           }}
           disabled={currentPage === 1}
-          className="px-4 py-2 bg-gray-700 text-white rounded disabled:opacity-50"
+          
         >
           Previous Page
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={() => {
             const newPage = currentPage + 1;
             router.push(`/?page=${newPage}`);
           }}
           disabled={currentPage === totalPages || totalPages === 0} // Disable if totalPages is 0
-          className="px-4 py-2 bg-gray-700 text-white rounded disabled:opacity-50"
+          
         >
           Next Page
-        </button>
+        </Button>
       </div>
     </>
   );

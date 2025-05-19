@@ -1,6 +1,7 @@
 "use client";
 
 import { signIn, signOut, useSession } from "next-auth/react";
+import { Button } from "@/components/ui/button";
 
 export default function SignIn() {
   const { data: session, status } = useSession();
@@ -14,10 +15,10 @@ export default function SignIn() {
       <div>
         <a href="/control-panel">Control Panel</a>
         <br />
-        <button onClick={() => signOut()}>Sign out</button>
+        <Button onClick={() => signOut()}>Sign out</Button>
       </div>
     );
   }
 
-  return <button onClick={() => signIn()}>Sign in</button>;
+  return <Button onClick={() => signIn()}>Sign in</Button>;
 }
