@@ -1,6 +1,16 @@
 'use client'
 
 import { useState, useEffect } from 'react';
+import {
+    Table,
+    TableBody,
+    TableCaption,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
 
 export default function ModelChecker() {
     const [models, setModels] = useState([]);
@@ -50,7 +60,7 @@ export default function ModelChecker() {
             <h1 className="text-4xl font-bold mb-4">Model Checker</h1>
             <p className="mb-4">Search for a model by name.</p>
             <div className="mb-4">
-                <input
+                <Input
                     type="text"
                     placeholder="Enter model name"
                     className="border border-gray-300 rounded p-2"
@@ -73,42 +83,41 @@ export default function ModelChecker() {
             {models.length > 0 && (
                 <div className="w-full mt-6 mx-auto">
                     <h2 className="text-2xl font-semibold mb-3 text-center">Search Results</h2>
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full bg-white border border-gray-700 rounded shadow">
-                            <thead className="bg-gray-900 text-white">
-                            <tr>
-                                <th className="py-2 px-4 border-b text-left">ID</th>
-                                <th className="py-2 px-4 border-b text-left">Name</th>
-                                <th className="py-2 px-4 border-b text-left">Provider</th>
-                                {showMoreInfo && <th className="py-2 px-4 border-b text-left">Model API ID</th>}
-                                {showMoreInfo && <th className="py-2 px-4 border-b text-left">Public ID</th>}
-                                {showMoreInfo && <th className="py-2 px-4 border-b text-left">Provider ID</th>}
-                                {showMoreInfo && <th className="py-2 px-4 border-b text-left">Multi Modal</th>}
-                                {showMoreInfo && <th className="py-2 px-4 border-b text-left">Supports Structured Output</th>}
-                                {showMoreInfo && <th className="py-2 px-4 border-b text-left">Base Sample Weight</th>}
-                                {showMoreInfo && <th className="py-2 px-4 border-b text-left">Is Private</th>}
-                                {showMoreInfo && <th className="py-2 px-4 border-b text-left">New Model</th>}
-                            </tr>
-                        </thead>
-                        <tbody className="text-gray-300">
+                    <Table>
+                        <TableCaption>{models.length} model(s) found.</TableCaption>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>ID</TableHead>
+                                <TableHead>Name</TableHead>
+                                <TableHead>Provider</TableHead>
+                                {showMoreInfo && <TableHead>Model API ID</TableHead>}
+                                {showMoreInfo && <TableHead>Public ID</TableHead>}
+                                {showMoreInfo && <TableHead>Provider ID</TableHead>}
+                                {showMoreInfo && <TableHead>Multi Modal</TableHead>}
+                                {showMoreInfo && <TableHead>Supports Structured Output</TableHead>}
+                                {showMoreInfo && <TableHead>Base Sample Weight</TableHead>}
+                                {showMoreInfo && <TableHead>Is Private</TableHead>}
+                                {showMoreInfo && <TableHead>New Model</TableHead>}
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
                             {models.map((model) => (
-                                <tr key={model.id} className="bg-gray-600 hover:bg-gray-700">
-                                    <td className="py-2 px-4 border-b">{model.id}</td>
-                                    <td className="py-2 px-4 border-b">{model.name}</td>
-                                    <td className="py-2 px-4 border-b">{model.provider}</td>
-                                    {showMoreInfo && <td className="py-2 px-4 border-b">{model.modelApiId}</td>}
-                                    {showMoreInfo && <td className="py-2 px-4 border-b">{model.publicId}</td>}
-                                    {showMoreInfo && <td className="py-2 px-4 border-b">{model.providerId}</td>}
-                                    {showMoreInfo && <td className="py-2 px-4 border-b">{model.multiModal ? 'Yes' : 'No'}</td>}
-                                    {showMoreInfo && <td className="py-2 px-4 border-b">{model.supportsStructuredOutput ? 'Yes' : 'No'}</td>}
-                                    {showMoreInfo && <td className="py-2 px-4 border-b">{model.baseSampleWeight}</td>}
-                                    {showMoreInfo && <td className="py-2 px-4 border-b">{model.isPrivate ? 'Yes' : 'No'}</td>}
-                                    {showMoreInfo && <td className="py-2 px-4 border-b">{model.newModel ? 'Yes' : 'No'}</td>}
-                                </tr>
+                                <TableRow key={model.id}>
+                                    <TableCell>{model.id}</TableCell>
+                                    <TableCell>{model.name}</TableCell>
+                                    <TableCell>{model.provider}</TableCell>
+                                    {showMoreInfo && <TableCell>{model.modelApiId}</TableCell>}
+                                    {showMoreInfo && <TableCell>{model.publicId}</TableCell>}
+                                    {showMoreInfo && <TableCell>{model.providerId}</TableCell>}
+                                    {showMoreInfo && <TableCell>{model.multiModal ? 'Yes' : 'No'}</TableCell>}
+                                    {showMoreInfo && <TableCell>{model.supportsStructuredOutput ? 'Yes' : 'No'}</TableCell>}
+                                    {showMoreInfo && <TableCell>{model.baseSampleWeight}</TableCell>}
+                                    {showMoreInfo && <TableCell>{model.isPrivate ? 'Yes' : 'No'}</TableCell>}
+                                    {showMoreInfo && <TableCell>{model.newModel ? 'Yes' : 'No'}</TableCell>}
+                                </TableRow>
                             ))}
-                        </tbody>
-                    </table>
-                    </div>
+                        </TableBody>
+                    </Table>
                 </div>
             )}
             {models.length === 0 && searchTerm && (
