@@ -78,6 +78,22 @@ export async function getFeed(page = 1) {
     });
 }
 
+export async function hideFeedItem(itemId) {
+    const currentDb = await getDb();
+    if (!currentDb) throw new Error("Database connection not available.");
+    return new Promise((resolve, reject) => {
+        currentDb.run("UPDATE feed SET isHidden = 1 WHERE id = ?", [itemId], function(err) {
+            if (err) {
+                console.error("Error hiding feed item:", err.message);
+                reject(err);
+            } else {
+                console.log(`Feed item ${itemId} hidden successfully. Changes: ${this.changes}`);
+                resolve(this.changes);
+            }
+        });
+    });
+}
+
 export async function getTotalPages() {
     const currentDb = await getDb();
     if (!currentDb) throw new Error("Database connection not available.");

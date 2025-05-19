@@ -27,7 +27,8 @@ export async function GET(request) {
                 type TEXT NOT NULL,
                 details TEXT NOT NULL,
                 appId TEXT NOT NULL,
-                date INTEGER NOT NULL
+                date INTEGER NOT NULL,
+                isHidden INTEGER DEFAULT 0,
             )
             `, (err) => {
             if (err) {
