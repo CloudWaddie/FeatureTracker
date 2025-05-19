@@ -14,6 +14,7 @@
     "google-play-scraper": "^10.0.1",
     "mocha": "11.1.0",
     "next": "^15.3.2",
+    "next-auth": "^5.0.0-beta.28",
     "node-cron": "^3.0.3",
     "playwright": "^1.52.0",
     "react": "^19.0.0",
