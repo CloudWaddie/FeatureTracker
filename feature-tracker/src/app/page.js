@@ -142,7 +142,6 @@ function PageContent() {
             router.push(`/?page=${newPage}`);
           }}
           disabled={currentPage === totalPages || totalPages === 0} // Disable if totalPages is 0
-          
         >
           Next Page
         </Button>
