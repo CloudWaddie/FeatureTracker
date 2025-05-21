@@ -167,16 +167,16 @@ export async function updateTableData(tableName, rowId, column, value) {
     });
 }
 
-export async function hideFeedItem(itemId) {
+export async function hideFeedItem(itemId, isHidden) {
     const currentDb = await getDb();
     if (!currentDb) throw new Error("Database connection not available.");
     return new Promise((resolve, reject) => {
-        currentDb.run("UPDATE feed SET isHidden = 1 WHERE id = ?", [itemId], function(err) {
+        currentDb.run("UPDATE feed SET isHidden = ? WHERE id = ?", [isHidden, itemId], function(err) {
             if (err) {
-                console.error("Error hiding feed item:", err.message);
+                console.error("Error updating feed item visibility:", err.message);
                 reject(err);
             } else {
-                console.log(`Feed item ${itemId} hidden successfully. Changes: ${this.changes}`);
+                console.log(`Feed item ${itemId} visibility updated to ${isHidden}. Changes: ${this.changes}`);
                 resolve(this.changes);
             }
         });
