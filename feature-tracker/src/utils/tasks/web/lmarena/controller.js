@@ -16,14 +16,14 @@ export default async function lmarenaController() {
             page.waitForResponse(res => res.url().match(/https:\/\/web\.lmarena\.ai\/_next\/static\/chunks\/app\/\(home\)\/page-.*\.js/)),
             page.goto("https://web.lmarena.ai")
         ]);
-
         const bodyBuffer = await response.body();
         const bodyString = bodyBuffer.toString('utf-8');
 
-        const modelRegex = /{modelApiId:".*"*.isPrivate:[!][0-1]}/g;
+        const modelRegex = /{modelApiId:".+?".+?provider:".+?".+?}/g;
         const models = bodyString.match(modelRegex) || [];
+        console.log("Models found:", models);
 
-        let jsonArrayString = `[${models[0]}]`;
+        let jsonArrayString = `[${models.join(',')}]`;
         jsonArrayString = jsonArrayString.replace(/([a-zA-Z0-9_]+):/g, '"$1":');
         jsonArrayString = jsonArrayString.replace(/!0/g, 'true').replace(/!1/g, 'false');
 

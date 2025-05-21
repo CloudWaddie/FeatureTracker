@@ -6,4 +6,5 @@ export const typeDisplayNameMap = {
     'lmarena': 'Updated lmarena models',
     'geminiDates': 'New date placholders added',
     'rssFeed': 'Updated RSS feeds',
+    'domainFinder': 'Updated domains'
   };

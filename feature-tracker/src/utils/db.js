@@ -78,6 +78,95 @@ export async function getFeed(page = 1) {
     });
 }
 
+export async function getAllTables() {
+    const currentDb = await getDb();
+    if (!currentDb) throw new Error("Database connection not available.");
+    return new Promise((resolve, reject) => {
+        currentDb.all("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';", (err, rows) => {
+            if (err) {
+                console.error("Error fetching tables:", err.message);
+                reject(err);
+            } else {
+                resolve(rows.map(row => row.name));
+            }
+        });
+    });
+}
+
+export async function getTableInfo(tableName) {
+    const currentDb = await getDb();
+    if (!currentDb) throw new Error("Database connection not available.");
+    return new Promise((resolve, reject) => {
+        currentDb.all(`PRAGMA table_info(${tableName});`, (err, rows) => {
+            if (err) {
+                console.error(`Error fetching table info for ${tableName}:`, err.message);
+                reject(err);
+            } else {
+                resolve(rows);
+            }
+        });
+    });
+}
+
+export async function getTableData(tableName) {
+    const currentDb = await getDb();
+    if (!currentDb) throw new Error("Database connection not available.");
+    // Basic sanitization to prevent SQL injection, though PRAGMA table_info is generally safe.
+    // For SELECT *, ensure tableName is validated against a list of known tables if possible.
+    if (!/^[a-zA-Z0-9_]+$/.test(tableName)) {
+        return Promise.reject(new Error("Invalid table name."));
+    }
+
+    let query = `SELECT * FROM ${tableName}`;
+    // Add specific ordering for the 'feed' table
+    if (tableName === 'feed') {
+        query += " ORDER BY date DESC";
+    }
+    query += ";";
+
+    return new Promise((resolve, reject) => {
+        currentDb.all(query, (err, rows) => {
+            if (err) {
+                console.error(`Error fetching data for table ${tableName}:`, err.message);
+                reject(err);
+            } else {
+                resolve(rows);
+            }
+        });
+    });
+}
+
+export async function updateTableData(tableName, rowId, column, value) {
+    const currentDb = await getDb();
+    if (!currentDb) throw new Error("Database connection not available.");
+
+    // Basic validation
+    if (!/^[a-zA-Z0-9_]+$/.test(tableName) || !/^[a-zA-Z0-9_]+$/.test(column)) {
+        return Promise.reject(new Error("Invalid table or column name."));
+    }
+    // Further validation might be needed for rowId and value based on expected types
+
+    // Assuming 'id' is the primary key column name for all tables.
+    // This might need to be dynamic if primary key names vary.
+    const sql = `UPDATE ${tableName} SET ${column} = ? WHERE id = ?`;
+
+    return new Promise((resolve, reject) => {
+        currentDb.run(sql, [value, rowId], function(err) {
+            if (err) {
+                console.error(`Error updating table ${tableName}:`, err.message);
+                reject(err);
+            } else {
+                if (this.changes === 0) {
+                     console.warn(`No rows updated in ${tableName} for id ${rowId}. Check if the ID exists.`);
+                } else {
+                    console.log(`Table ${tableName} updated successfully for id ${rowId}. Changes: ${this.changes}`);
+                }
+                resolve(this.changes);
+            }
+        });
+    });
+}
+
 export async function hideFeedItem(itemId) {
     const currentDb = await getDb();
     if (!currentDb) throw new Error("Database connection not available.");
