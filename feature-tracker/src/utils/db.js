@@ -47,8 +47,6 @@ const initializeDbConnection = () => {
 // Functions will await this promise.
 initializeDbConnection().catch(err => {
     console.error("Initial database connection failed:", err.message);
-    // Depending on the application's needs, you might want to handle this more gracefully,
-    // e.g., by setting a flag that prevents operations until connection is successful.
 });
 
 const ITEMS_PER_PAGE = 12; // Number of items to fetch per page
@@ -62,12 +60,12 @@ async function getDb() {
     return initializeDbConnection();
 }
 
-export async function getFeed(page = 1) {
+export async function getFeed(page = 1, showHidden = false) {
     const currentDb = await getDb();
     if (!currentDb) throw new Error("Database connection not available.");
     return new Promise((resolve, reject) => {
         const offset = (page - 1) * ITEMS_PER_PAGE;
-        currentDb.all("SELECT * FROM feed ORDER BY date DESC LIMIT ? OFFSET ?", [ITEMS_PER_PAGE, offset], (err, rows) => {
+        currentDb.all("SELECT * FROM feed WHERE isHidden = ? OR isHidden = 0 ORDER BY date DESC LIMIT ? OFFSET ?", [showHidden, ITEMS_PER_PAGE, offset], (err, rows) => {
             if (err) {
                 console.error("Error fetching feed:", err.message);
                 reject(err);
@@ -183,11 +181,11 @@ export async function hideFeedItem(itemId) {
     });
 }
 
-export async function getTotalPages() {
+export async function getTotalPages(showHidden) {
     const currentDb = await getDb();
     if (!currentDb) throw new Error("Database connection not available.");
     return new Promise((resolve, reject) => {
-        currentDb.get("SELECT COUNT(*) as count FROM feed", (err, row) => {
+        currentDb.get("SELECT COUNT(*) as count FROM feed WHERE isHidden = ? OR isHidden = 0", [showHidden], (err, row) => {
             if (err) {
                 console.error("Error fetching total item count:", err.message);
                 reject(err);

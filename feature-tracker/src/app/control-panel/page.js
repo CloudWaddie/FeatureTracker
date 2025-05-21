@@ -82,7 +82,7 @@ export default function Page() {
 
     const fetchTotalPages = async () => {
       try {
-        const res = await fetch("/api/getTotalPages");
+        const res = await fetch("/api/getTotalPages?showHidden=true");
         if (!res.ok) throw new Error("Failed to fetch total pages");
         const textData = await res.text();
         const numPages = parseInt(textData, 10);
@@ -96,7 +96,7 @@ export default function Page() {
     const fetchFeedData = async (page) => {
       setLoadingFeed(true);
       try {
-        const res = await fetch(`/api/db/getFeed?page=${page}`);
+        const res = await fetch(`/api/db/getFeed?page=${page}&showHidden=true`);
         if (!res.ok) throw new Error("Failed to fetch feed data");
         const data = await res.json();
         setFeedData(data);
