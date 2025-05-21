@@ -119,7 +119,7 @@ function PageContent() {
                 <p>{update.details}</p>
               </CardContent>
               <CardFooter>
-                <p>{new Date(update.date).toLocaleString()}</p>
+                <p className='text-muted-foreground text-sm'>{new Date(update.date).toLocaleString()}</p>
               </CardFooter>
             </Card> 
           );

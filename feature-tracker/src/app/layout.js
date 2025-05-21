@@ -1,6 +1,7 @@
 import "./globals.css";
 import Link from "next/link";
 import { SessionProvider } from "next-auth/react";
+import { Toaster } from "@/components/ui/sonner"
 
 export const metadata = {
   title: "Feature Tracker",
@@ -36,6 +37,7 @@ export default function RootLayout({ children }) {
           <div className="p-4">
             {children}
           </div>
+          <Toaster />
         </body>
       </html>
     </SessionProvider>
