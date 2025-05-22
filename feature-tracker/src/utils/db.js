@@ -783,3 +783,20 @@ export async function findDeletionsFeeds(url) {
         });
     });
 }
+
+export async function hideFeedByCategory(category, hide = true) {
+    const currentDb = await getDb();
+    if (!currentDb) throw new Error("Database connection not available.");
+    const isHiddenValue = hide ? 1 : 0;
+    return new Promise((resolve, reject) => {
+        currentDb.run("UPDATE feed SET isHidden = ? WHERE type = ?", [isHiddenValue, category], function(err) {
+            if (err) {
+                console.error(`Error ${hide ? "hiding" : "showing"} feed by category:`, err.message);
+                reject(err);
+            } else {
+                console.log(`Feed items of category ${category} ${hide ? "hidden" : "shown"} successfully. Changes: ${this.changes}`);
+                resolve(this.changes);
+            }
+        });
+    });
+}
