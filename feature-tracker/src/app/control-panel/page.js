@@ -8,6 +8,7 @@ import { signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { typeDisplayNameMap } from "../consts";
 import {
   Table,
   TableBody,
@@ -31,6 +32,17 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 export default function Page() {
   const { data: session, status } = useSession();
@@ -47,6 +59,10 @@ export default function Page() {
   const [loadingTableData, setLoadingTableData] = useState(false);
   const [editingCell, setEditingCell] = useState(null); // { rowIndex, columnName, originalValue, rowId }
   const [editValue, setEditValue] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [categoryComboboxOpen, setCategoryComboboxOpen] = useState(false);
+  const [isHidingCategory, setIsHidingCategory] = useState(true); // New state to track action
+  const [dialogOpen, setDialogOpen] = useState(false); // Control dialog visibility
 
   const hideItem = async (id, currentIsHidden) => {
     const newIsHidden = currentIsHidden === 1 ? 0 : 1;
@@ -82,7 +98,7 @@ export default function Page() {
 
     const fetchTotalPages = async () => {
       try {
-        const res = await fetch("/api/getTotalPages");
+        const res = await fetch("/api/getTotalPages?showHidden=true");
         if (!res.ok) throw new Error("Failed to fetch total pages");
         const textData = await res.text();
         const numPages = parseInt(textData, 10);
@@ -96,7 +112,7 @@ export default function Page() {
     const fetchFeedData = async (page) => {
       setLoadingFeed(true);
       try {
-        const res = await fetch(`/api/db/getFeed?page=${page}`);
+        const res = await fetch(`/api/db/getFeed?page=${page}&showHidden=true`);
         if (!res.ok) throw new Error("Failed to fetch feed data");
         const data = await res.json();
         setFeedData(data);
@@ -235,9 +251,99 @@ export default function Page() {
 
   return (
     <div className="container mx-auto py-10">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex items-center justify-between mb-6">
         <h2 className="text-3xl font-bold">Control Panel</h2>
-        <Button onClick={() => signOut()}>Sign out</Button>
+        <div className="flex items-center space-x-2"> {/* Added a div to group buttons and apply gap */}
+          {/* AlertDialog for Hiding/Showing Categories */}
+          <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            {/* Triggers are now separate buttons but control the same dialog */}
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{isHidingCategory ? "Hide" : "Show"} a Category</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Select a category to {isHidingCategory ? "hide. This will prevent new items from this category from appearing in the main feed." : "show. This will allow new items from this category to appear in the main feed."}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <div className="py-4">
+                <Popover open={categoryComboboxOpen} onOpenChange={setCategoryComboboxOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={categoryComboboxOpen}
+                      className="w-full justify-between bg-gray-800 text-white hover:bg-gray-700 hover:text-white"
+                    >
+                      {selectedCategory
+                        ? typeDisplayNameMap[selectedCategory] || "Select category..."
+                        : "Select category..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0 bg-gray-800 border-gray-700">
+                    <Command>
+                      <CommandInput placeholder="Search category..." />
+                      <CommandList>
+                        <CommandEmpty>No category found.</CommandEmpty>
+                        <CommandGroup>
+                          {Object.entries(typeDisplayNameMap).map(([value, label]) => (
+                            <CommandItem
+                              key={value}
+                              value={value}
+                              onSelect={(currentValue) => {
+                                setSelectedCategory(currentValue === selectedCategory ? "" : currentValue);
+                                setCategoryComboboxOpen(false);
+                              }}
+                              className="text-white hover:bg-gray-700 aria-selected:bg-blue-600"
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  selectedCategory === value ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {label}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => {setSelectedCategory(""); setDialogOpen(false);}}>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={async () => {
+                  if (selectedCategory) {
+                    try {
+                      const response = await fetch('/api/db/hideCategory', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ category: selectedCategory, hide: isHidingCategory }),
+                      });
+                      if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || `Failed to ${isHidingCategory ? "hide" : "show"} category ${typeDisplayNameMap[selectedCategory]}`);
+                      }
+                      toast.success(`Successfully ${isHidingCategory ? "hid" : "showed"} category "${typeDisplayNameMap[selectedCategory]}".`);
+                      setSelectedCategory(""); // Reset selection
+                      setDialogOpen(false); // Close dialog on success
+                      // Optionally, refresh data or update UI
+                    } catch (error) {
+                      console.error(`Failed to ${isHidingCategory ? "hide" : "show"} category: ${selectedCategory}`, error);
+                      toast.error(`Error: ${error.message}`);
+                    }
+                  } else {
+                    toast.warning("Please select a category.");
+                  }
+                }}>{isHidingCategory ? "Hide" : "Show"} Category</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          {/* Buttons to trigger the dialog */}
+          <Button variant="outline" onClick={() => { setIsHidingCategory(true); setDialogOpen(true); }}>Hide Category</Button>
+          <Button variant="outline" onClick={() => { setIsHidingCategory(false); setDialogOpen(true); }}>Show Category</Button>
+          <Button onClick={() => signOut()}>Sign out</Button>
+        </div>
       </div>
       <p className="mb-6">Welcome to the control panel, {session.user.name}!</p>
 
