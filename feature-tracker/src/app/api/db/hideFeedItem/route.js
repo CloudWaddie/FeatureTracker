@@ -11,7 +11,7 @@ export async function POST(req) {
 
     try {
         const { id, isHidden } = await req.json();
-        if (!id || isHidden === undefined) {
+        if (id == null || typeof isHidden !== 'boolean') {
             return NextResponse.json({ message: "Missing 'id' or 'isHidden' in request body" }, { status: 400 });
         }
         await hideFeedItem(id, isHidden);
