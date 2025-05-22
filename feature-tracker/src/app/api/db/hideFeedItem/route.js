@@ -10,12 +10,12 @@ export async function POST(req) {
     }
 
     try {
-        const { id } = await req.json();
-        if (!id) {
-            return NextResponse.json({ message: "Missing 'id' in request body" }, { status: 400 });
+        const { id, isHidden } = await req.json();
+        if (id == null || typeof isHidden !== 'boolean') {
+            return NextResponse.json({ message: "Missing 'id' or 'isHidden' in request body" }, { status: 400 });
         }
-        await hideFeedItem(id);
-        return NextResponse.json({ message: "Item hidden successfully" }, { status: 200 });
+        await hideFeedItem(id, isHidden);
+        return NextResponse.json({ message: `Item ${isHidden ? 'hidden' : 'shown'} successfully` }, { status: 200 });
     } catch (error) {
         console.error("Error hiding feed item:", error);
         if (error instanceof SyntaxError) { // Handle cases where req.json() fails
