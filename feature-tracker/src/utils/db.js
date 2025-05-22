@@ -171,7 +171,7 @@ export async function hideFeedItem(itemId, isHidden) {
     const currentDb = await getDb();
     if (!currentDb) throw new Error("Database connection not available.");
     return new Promise((resolve, reject) => {
-        currentDb.run("UPDATE feed SET isHidden = ? WHERE id = ?", [isHidden, itemId], function(err) {
+        currentDb.run("UPDATE feed SET isHidden = ? WHERE id = ?", [isHidden ? 1 : 0, itemId], function(err) {
             if (err) {
                 console.error("Error updating feed item visibility:", err.message);
                 reject(err);
