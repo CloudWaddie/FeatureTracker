@@ -1,10 +1,7 @@
 import { promises as fs } from 'fs'; // Changed to fs.promises
-import { exec as execCallback } from 'child_process'; // Changed to exec
-import util from 'util'; // To promisify exec
+import { spawn } from 'child_process'; // Changed to use spawn
 import path from 'path';
 import os from 'os';
-
-const exec = util.promisify(execCallback); // Promisify exec
 
 export default async function downloadApk(appId) {
   // Placeholder for apkeep logic
@@ -14,9 +11,6 @@ export default async function downloadApk(appId) {
   const apkeepExecutable = isWindows ? 'apkeep-windows.exe' : 'apkeep-linux';
   const apkeepPath = path.resolve(process.cwd(), 'src', 'utils', 'tasks', 'apps', 'resources', apkeepExecutable);
   const apkFilesDir = path.resolve(process.cwd(), 'apk-files');
-
-  // Ensure the output directory for apkeep is absolute and quoted if it contains spaces, though 'apk-files' does not.
-  const command = `"${apkeepPath}" --accept-tos -d google-play --aas-token "${process.env.AAS_TOKEN}" -e "${process.env.APK_EMAIL}" -a ${appId} "${apkFilesDir}"`;
 
   try {
     console.log("Preparing APK directory:", apkFilesDir);
@@ -46,19 +40,37 @@ export default async function downloadApk(appId) {
       }
     }
 
-    console.log(`Executing: ${command}`);
-    // Using promisified exec. stdio: 'inherit' is not directly supported in the same way.
-    // We can capture stdout and stderr and log them.
-    const { stdout, stderr } = await exec(command);
-    if (stdout) console.log('stdout:', stdout);
-    if (stderr) console.error('stderr:', stderr); // apkeep might output progress to stderr
+    console.log(`Executing apkeep for: ${appId}`);
+    const apkeepProcess = spawn(apkeepPath, [
+      '--accept-tos',
+      '-d', 'google-play',
+      '--aas-token', process.env.AAS_TOKEN,
+      '-e', process.env.APK_EMAIL,
+      '-a', appId,
+      apkFilesDir
+    ]);
+
+    apkeepProcess.stdout.on('data', (data) => {
+      console.log(`stdout: ${data}`);
+    });
+
+    apkeepProcess.stderr.on('data', (data) => {
+      console.error(`stderr: ${data}`); // apkeep might output progress to stderr
+    });
+
+    const exitCode = await new Promise((resolve, reject) => {
+      apkeepProcess.on('close', resolve);
+      apkeepProcess.on('error', reject);
+    });
+
+    if (exitCode !== 0) {
+      throw new Error(`apkeep process exited with code ${exitCode}`);
+    }
 
     console.log(`Successfully initiated APK download for ${appId}`);
     // Add further processing here, e.g., moving the file, extracting info, etc.
   } catch (error) {
     console.error(`Failed to download APK for ${appId}: ${error.message}`);
-    if (error.stdout) console.error(`Stdout: ${error.stdout.toString()}`);
-    if (error.stderr) console.error(`Stderr: ${error.stderr.toString()}`);
     // Handle errors, e.g., apkeep not found, download failed, etc.
   }
 }
