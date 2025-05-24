@@ -1,0 +1,4 @@
+resources/strings
+resources/apk-extracted
+!resources/apktool.jar
+!resources/apkeep

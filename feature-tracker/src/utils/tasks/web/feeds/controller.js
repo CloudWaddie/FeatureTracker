@@ -7,7 +7,7 @@ export default async function feedController() {
     const configPath = `${cwd()}/src/utils/tasks/web/feeds/config.txt`;
     const fileContent = await fs.promises.readFile(configPath, 'utf8');
     const lines = fileContent.split("\n");
-    const feedURLS = [];
+    let feedURLS = [];
 
     // --- Parsing logic remains the same ---
     for (const line of lines) {
@@ -23,38 +23,58 @@ export default async function feedController() {
             console.warn(`URL "${trimmedLine}" is not (likely to be) a valid URL in ${configPath}. Ignoring.`);
         }
     }
+    // Ensure feedURLS are unique
+    feedURLS = [...new Set(feedURLS)];
     // --- End of parsing logic ---
     let parser = new Parser();
     for (const url of feedURLS) {
-        let feed = [];
+        let feedItems = [];
+        let feedLink = url; // Default to URL if feed.link is not available
         try {
-            feed = await parser.parseURL(url);
-            console.log(`Fetched feed from ${url}`);
+            const parsedFeed = await parser.parseURL(url);
+            if (parsedFeed && parsedFeed.items) {
+                feedLink = parsedFeed.link || url; // Use parsed feed link if available
+                // Ensure feed items are unique by link or guid
+                const uniqueItemsMap = new Map();
+                parsedFeed.items.forEach(item => {
+                    const key = item.link || item.guid || item.title; // Use link, then guid, then title as key
+                    if (key && !uniqueItemsMap.has(key)) {
+                        uniqueItemsMap.set(key, item);
+                    }
+                });
+                feedItems = Array.from(uniqueItemsMap.values());
+            }
+            console.log(`Fetched and deduplicated feed from ${url}. Original count: ${parsedFeed.items ? parsedFeed.items.length : 0}, Unique count: ${feedItems.length}`);
         } catch (error) {
             console.error(`Error fetching feed from ${url}:`, error);
             continue;
         }
-        if (!feed || !feed.items || feed.items.length === 0) {
-            console.error(`No items found in the feed from ${url}`);
+        if (!feedItems || feedItems.length === 0) {
+            console.error(`No items found or processed in the feed from ${url}`);
             continue;
         }
-        await clearNewFeedsByURL(feed.link);
-        await updateNewFeeds(feed);
-        const additions = await findAdditionsFeeds(feed.link);
-        const deletions = await findDeletionsFeeds(feed.link);
-        await clearOldFeedsByURL(feed.link);
-        await updateOldFeeds(feed);
+        // Construct a feed object compatible with downstream functions
+        const feedDataForDB = {
+            link: feedLink,
+            items: feedItems
+        };
+        await clearNewFeedsByURL(feedLink);
+        await updateNewFeeds(feedDataForDB);
+        const additions = await findAdditionsFeeds(feedLink);
+        const deletions = await findDeletionsFeeds(feedLink);
+        await clearOldFeedsByURL(feedLink);
+        await updateOldFeeds(feedDataForDB);
         if (additions.length === 0 && deletions.length === 0) {
             console.log(`No changes detected for ${url}`);
             continue;
         }
         else {
-            const readableAdditions = additions.map(item => item.url).join(', ');
-            const readableDeletions = deletions.map(item => item.url).join(', ');
+            const readableAdditions = additions.map(item => item.url || item.link || item.title).join(', ');
+            const readableDeletions = deletions.map(item => item.url || item.link || item.title).join(', ');
             const dataToAddToFeed = {
                 type: 'rssFeed',
                 details: `Additions: ${readableAdditions}, Deletions: ${readableDeletions}`,
-                appId: feed.link,
+                appId: feedLink,
             };
             try {
                 await updateFeed(dataToAddToFeed);
