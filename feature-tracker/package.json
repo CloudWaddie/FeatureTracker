@@ -23,6 +23,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "diff": "^8.0.1",
+    "dompurify": "^3.2.6",
     "google-play-scraper": "^10.0.1",
     "lucide-react": "^0.511.0",
     "mocha": "11.1.0",
@@ -39,8 +40,7 @@
     "sitemapper": "^3.2.20",
     "sonner": "^2.0.3",
     "sqlite3": "^5.1.7",
-    "tailwind-merge": "^3.3.0",
-    "xml2js": "^0.6.2"
+    "tailwind-merge": "^3.3.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
