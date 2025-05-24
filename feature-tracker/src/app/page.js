@@ -2,8 +2,10 @@
 
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { typeDisplayNameMap } from './consts';
+import Link from 'next/link';
+import { typeDisplayNameMap, FEED_ITEM_SUMMARY_LENGTH } from './consts';
 import { Button } from '@/components/ui/button';
+import { Autolinker } from 'autolinker';
 import {
   Card,
   CardContent,
@@ -112,11 +114,79 @@ function PageContent() {
           return (
             <Card key={update.id}>
               <CardHeader>
-                <CardTitle>{typeDisplayName}</CardTitle>
+                <Link href={`/feed-item/${update.id}`} passHref>
+                  <CardTitle className="cursor-pointer hover:underline">{typeDisplayName}</CardTitle>
+                </Link>
                 <CardDescription>{update.appId}</CardDescription>
               </CardHeader>
               <CardContent>
-                <p>{update.details}</p>
+                {update.type === 'strings' ? (() => {
+                  const details = update.details;
+                  const lines = details.split('\n');
+                  let contentToShow = [];
+                  let needsTruncationLink = false;
+                  const isLong = details.length > FEED_ITEM_SUMMARY_LENGTH;
+
+                  if (isLong) {
+                    needsTruncationLink = true;
+                    let accumulatedChars = 0;
+                    for (let i = 0; i < lines.length; i++) {
+                      const line = lines[i];
+                      const lineLengthWithPotentialNewline = line.length + (i < lines.length - 1 ? 1 : 0);
+
+                      if (accumulatedChars + lineLengthWithPotentialNewline <= FEED_ITEM_SUMMARY_LENGTH) {
+                        contentToShow.push(line);
+                        accumulatedChars += lineLengthWithPotentialNewline;
+                      } else {
+                        const remainingChars = FEED_ITEM_SUMMARY_LENGTH - accumulatedChars;
+                        if (remainingChars > 0) {
+                          contentToShow.push(line.substring(0, remainingChars) + "...");
+                        } else if (contentToShow.length > 0 && !contentToShow[contentToShow.length - 1].endsWith("...")) {
+                           contentToShow[contentToShow.length - 1] = contentToShow[contentToShow.length - 1] + "...";
+                        } else if (contentToShow.length === 0) { 
+                            contentToShow.push(line.substring(0, FEED_ITEM_SUMMARY_LENGTH) + "...");
+                        }
+                        break;
+                      }
+                    }
+                  } else {
+                    contentToShow = lines;
+                  }
+
+                  return (
+                    <>
+                      {contentToShow.map((lineContent, idx) => {
+                        const originalLineForStyle = lines[idx] || "";
+                        let style = {};
+                        if (originalLineForStyle.startsWith('+')) style.color = 'green';
+                        else if (originalLineForStyle.startsWith('-')) style.color = 'red';
+                        const linkedContent = Autolinker.link(lineContent, {
+                          newWindow: true,
+                          className: 'text-blue-500 hover:underline',
+                          truncate: { length: 50, location: 'smart' }
+                        });
+                        return <div key={idx} style={style} className="break-words whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: linkedContent }} />;
+                      })}
+                      {needsTruncationLink && (
+                        <Link href={`/feed-item/${update.id}`} passHref>
+                          <span className="text-gray-500 hover:underline cursor-pointer">Show more...</span>
+                        </Link>
+                      )}
+                    </>
+                  );
+                })() : (
+                  // Original logic for non-'strings' type
+                  update.details.length > FEED_ITEM_SUMMARY_LENGTH ? (
+                    <>
+                      <div className="break-words whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: Autolinker.link(update.details.substring(0, FEED_ITEM_SUMMARY_LENGTH) + "...", { newWindow: true, className: 'text-blue-500 hover:underline', truncate: { length: 50, location: 'smart' }}) }} />
+                      <Link href={`/feed-item/${update.id}`} passHref>
+                        <span className="text-gray-500 hover:underline cursor-pointer">Show more...</span>
+                      </Link>
+                    </>
+                  ) : (
+                    <div className="break-words whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: Autolinker.link(update.details, { newWindow: true, className: 'text-blue-500 hover:underline', truncate: { length: 50, location: 'smart' }}) }} />
+                  )
+                )}
               </CardContent>
               <CardFooter>
                 <p className='text-muted-foreground text-sm'>{new Date(update.date).toLocaleString()}</p>

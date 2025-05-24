@@ -800,3 +800,18 @@ export async function hideFeedByCategory(category, hide = true) {
         });
     });
 }
+
+export async function getFeedItem(id) {
+    const currentDb = await getDb();
+    if (!currentDb) throw new Error("Database connection not available.");
+    return new Promise((resolve, reject) => {
+        currentDb.get("SELECT * FROM feed WHERE id = ?", [id], (err, row) => {
+            if (err) {
+                console.error("Error fetching feed item:", err.message);
+                reject(err);
+            } else {
+                resolve(row);
+            }
+        });
+    });
+}

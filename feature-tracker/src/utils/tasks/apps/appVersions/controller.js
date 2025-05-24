@@ -8,6 +8,9 @@ import checkAndroidForUpdates from "./checkAndroidForUpdates.js";
 import checkAppleForUpdates from "./checkAppleForUpdates.js";
 // --- End of new imports ---
 
+import downloadApk from "./downloadApk.js";
+import extractStrings from "./extractStrings.js";
+import compareAndUpdateDB from "./compareAndUpdateDB.js";
 
 export default async function appVersionController() {
     const configPath = `${cwd()}/src/utils/tasks/apps/appVersions/config.txt`;
@@ -83,6 +86,22 @@ export default async function appVersionController() {
                         store: store
                     };
                     await updateDB(data);
+                    if (store === 'android') {
+                            try {
+                                console.log(`Starting background APK processing for ${updateCheckResult.package}`);
+                                await downloadApk(updateCheckResult.package);
+                                // Wait for 100 milliseconds to give time for the server to start listening again
+                                await new Promise(resolve => setTimeout(resolve, 1000));
+                                const stringsXMLPath = await extractStrings(`./apk-files/${updateCheckResult.package}.apk`);
+                                await new Promise(resolve => setTimeout(resolve, 1000));
+                                console.log(`Extracted strings from APK for ${updateCheckResult.package}`);
+                                // Compare and update the database with the new strings
+                                await compareAndUpdateDB(stringsXMLPath, updateCheckResult.package);
+                                console.log(`Finished background APK processing for ${updateCheckResult.package}`);
+                            } catch (error) {
+                                console.error(`Error during background APK processing for ${updateCheckResult.package}:`, error);
+                            }
+                    }
                 } else {
                     // This will catch cases where updateCheckResult is not set (unknown store)
                     // or where updateAvailable is false.
