@@ -1,13 +1,24 @@
 import { exec as execCallback } from 'child_process'; // Changed to exec
 import util from 'util'; // To promisify exec
 import path from 'path';
+import { promises as fs } from 'fs'; // Import fs.promises
 
 const exec = util.promisify(execCallback); // Promisify exec
 
 export default async function extractStrings(apkPath) {
     // Use apktool to extract strings from the APK
     const apktoolPath = path.resolve(process.cwd(), 'src', 'utils', 'tasks', 'apps', 'resources', 'apktool.jar');
-    const outputDir = path.join(process.cwd(), 'src', 'utils', 'tasks', 'apps', 'resources', 'apk-extracted', path.basename(apkPath, '.apk'));
+    const baseOutputDir = path.join(process.cwd(), 'src', 'utils', 'tasks', 'apps', 'resources', 'apk-extracted');
+    const outputDir = path.join(baseOutputDir, path.basename(apkPath, '.apk'));
+
+    try {
+        // Ensure the base output directory exists
+        await fs.mkdir(baseOutputDir, { recursive: true });
+        console.log(`Ensured base output directory exists: ${baseOutputDir}`);
+    } catch (error) {
+        console.error(`Error creating base output directory ${baseOutputDir}:`, error);
+        throw error; // Re-throw if directory creation fails
+    }
     
     const command = `java -jar "${apktoolPath}" d -f -o "${outputDir}" --no-src --no-assets "${apkPath}"`;
     console.log(`Executing: ${command}`);
