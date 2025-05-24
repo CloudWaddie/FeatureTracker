@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { typeDisplayNameMap, FEED_ITEM_SUMMARY_LENGTH } from './consts';
 import { Button } from '@/components/ui/button';
 import { Autolinker } from 'autolinker';
+import DOMPurify from 'dompurify';
 import {
   Card,
   CardContent,
@@ -165,7 +166,7 @@ function PageContent() {
                           className: 'text-blue-500 hover:underline',
                           truncate: { length: 50, location: 'smart' }
                         });
-                        return <div key={idx} style={style} className="break-words whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: linkedContent }} />;
+                        return <div key={idx} style={style} className="break-words whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(linkedContent) }} />;
                       })}
                       {needsTruncationLink && (
                         <Link href={`/feed-item/${update.id}`} passHref>
@@ -178,13 +179,13 @@ function PageContent() {
                   // Original logic for non-'strings' type
                   update.details.length > FEED_ITEM_SUMMARY_LENGTH ? (
                     <>
-                      <div className="break-words whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: Autolinker.link(update.details.substring(0, FEED_ITEM_SUMMARY_LENGTH) + "...", { newWindow: true, className: 'text-blue-500 hover:underline', truncate: { length: 50, location: 'smart' }}) }} />
+                      <div className="break-words whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(Autolinker.link(update.details.substring(0, FEED_ITEM_SUMMARY_LENGTH) + "...", { newWindow: true, className: 'text-blue-500 hover:underline', truncate: { length: 50, location: 'smart' }})) }} />
                       <Link href={`/feed-item/${update.id}`} passHref>
                         <span className="text-gray-500 hover:underline cursor-pointer">Show more...</span>
                       </Link>
                     </>
                   ) : (
-                    <div className="break-words whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: Autolinker.link(update.details, { newWindow: true, className: 'text-blue-500 hover:underline', truncate: { length: 50, location: 'smart' }}) }} />
+                    <div className="break-words whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(Autolinker.link(update.details, { newWindow: true, className: 'text-blue-500 hover:underline', truncate: { length: 50, location: 'smart' }})) }} />
                   )
                 )}
               </CardContent>

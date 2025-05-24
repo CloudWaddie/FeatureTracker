@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useParams } from 'next/navigation';
 import { typeDisplayNameMap } from '../../consts'; // Adjusted path
 import { Autolinker } from 'autolinker';
+import DOMPurify from 'dompurify';
 import {
   Card,
   CardContent,
@@ -71,10 +72,10 @@ function FeedItemDetailContent() {
                 className: 'text-blue-500 hover:underline',
                 truncate: { length: 50, location: 'smart' }
               });
-              return <div key={index} style={style} dangerouslySetInnerHTML={{ __html: linkedContent }} />;
+              return <div key={index} style={style} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(linkedContent) }} />;
             })
           ) : (
-            <div style={{ whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: Autolinker.link(feedItem.details, { newWindow: true, className: 'text-blue-500 hover:underline', truncate: { length: 50, location: 'smart' }}) }} />
+            <div style={{ whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(Autolinker.link(feedItem.details, { newWindow: true, className: 'text-blue-500 hover:underline', truncate: { length: 50, location: 'smart' }})) }} />
           )}
         </CardContent>
         <CardFooter>
