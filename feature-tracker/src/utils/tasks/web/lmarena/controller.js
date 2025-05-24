@@ -46,7 +46,7 @@ export default async function lmarenaController() {
             console.log("Formatted details for feed:", formatedDetails);
             // Update feed - type, details, appId, date
             const dataToUpdate = {
-                type: 'lmarena',
+                type: 'models',
                 details: formatedDetails,
                 appId: 'lmarena',
             }
