@@ -7,7 +7,7 @@ export default async function sitemapController() {
     const configPath = `${cwd()}/src/utils/tasks/web/sitemaps/config.txt`;
     const fileContent = await fs.promises.readFile(configPath, 'utf8');
     const lines = fileContent.split("\n");
-    const sitemapUrls = [];
+    let sitemapUrls = [];
 
     // --- Parsing logic remains the same ---
     for (const line of lines) {
@@ -23,6 +23,8 @@ export default async function sitemapController() {
             console.warn(`URL "${trimmedLine}" is not (likely to be) a valid URL in ${configPath}. Ignoring.`);
         }
     }
+    // Ensure sitemapUrls are unique
+    sitemapUrls = [...new Set(sitemapUrls)];
     // --- End of parsing logic ---
 
     // --- Fetching sitemaps ---
@@ -34,35 +36,63 @@ export default async function sitemapController() {
     });
     for (const url of sitemapUrls) {
         let sites = [];
+        let actualSitemapUrl = url; // Initialize with the loop url
         try {
-            const sitemap = await sitemapper.fetch(url);
-            sites = sitemap;
-            console.log(`Fetched sitemap from ${url}`);
+            const sitemapObject = await sitemapper.fetch(url); // Renamed to avoid confusion
+
+            if (sitemapObject && typeof sitemapObject.url === 'string') {
+                actualSitemapUrl = sitemapObject.url; // Use URL from fetched object if available and it's a string
+            }
+
+            // Ensure sites are unique by URL (loc)
+            if (sitemapObject && Array.isArray(sitemapObject.sites)) {
+                const uniqueSitesMap = new Map();
+                sitemapObject.sites.forEach(site => {
+                    if (site && site.loc) {
+                        uniqueSitesMap.set(site.loc, site);
+                    }
+                });
+                sites = Array.from(uniqueSitesMap.values());
+            } else if (Array.isArray(sitemapObject)) { // Fallback if sitemapObject is directly an array
+                const uniqueSitesMap = new Map();
+                sitemapObject.forEach(site => {
+                    if (site && site.loc) {
+                        uniqueSitesMap.set(site.loc, site);
+                    }
+                });
+                sites = Array.from(uniqueSitesMap.values());
+            } else {
+                sites = []; // Or handle as an error/empty case
+            }
+            console.log(`Fetched and deduplicated sitemap from ${url}. Original count: ${sitemapObject && sitemapObject.sites ? sitemapObject.sites.length : (Array.isArray(sitemapObject) ? sitemapObject.length : 0)}, Unique count: ${sites.length}. Effective URL: ${actualSitemapUrl}`);
         } catch (error) {
             console.error(`Error fetching sitemap from ${url}:`, error);
             continue;
         }
-        await clearNewSitemapsByURL(url);
-        await updateNewSitemaps(sites);
-        const additions = await findAdditionsSitemaps(url);
-        const deletions = await findDeletionsSitemaps(url);
-        await clearOldSitemapsByURL(url);
-        await updateOldSitemaps(sites);
+
+        // Use actualSitemapUrl for all DB operations related to this sitemap
+        await clearNewSitemapsByURL(actualSitemapUrl);
+        await updateNewSitemaps({ sites: sites, url: actualSitemapUrl });
+        const additions = await findAdditionsSitemaps(actualSitemapUrl);
+        const deletions = await findDeletionsSitemaps(actualSitemapUrl);
+        await clearOldSitemapsByURL(actualSitemapUrl);
+        await updateOldSitemaps({ sites: sites, url: actualSitemapUrl });
+
         if (additions.length === 0 && deletions.length === 0) {
-            console.log(`No changes detected for ${url}`);
+            console.log(`No changes detected for ${actualSitemapUrl}`);
             continue;
         }
         else {
-            console.log(`Additions for ${url}:`, additions);
-            console.log(`Deletions for ${url}:`, deletions);
-            const readableAdditions = additions.map(item => item.url).join(', ');
+            console.log(`Additions for ${actualSitemapUrl}:`, additions);
+            console.log(`Deletions for ${actualSitemapUrl}:`, deletions);
+            const readableAdditions = additions.map(item => item.url).join(', '); // item.url refers to db schema
             const readableDeletions = deletions.map(item => item.url).join(', ');
             const dataToAddToFeed = {
                 type: 'sitemap',
                 details: `Additions: ${readableAdditions}, Deletions: ${readableDeletions}`,
-                appId: url,
+                appId: actualSitemapUrl, // Use actualSitemapUrl for consistency
             };
-            //console.log(`Data to add to feed for ${url}:`, dataToAddToFeed);
+            //console.log(`Data to add to feed for ${actualSitemapUrl}:`, dataToAddToFeed);
             await updateFeed(dataToAddToFeed);
         }
     }
