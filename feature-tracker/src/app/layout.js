@@ -33,6 +33,7 @@ export default function RootLayout({ children }) {
       <html lang="en" className="dark">
         <GoogleTagManager gtmId="GTM-WL7RJ9WG"/>
         <head>
+          <meta name="google-site-verification" content="bURyk-A5z78A9pWZ9G3gylCjZcgses8KXg3fa0ETXcs" />
           <link
           rel="alternate"
           type="application/rss+xml"
