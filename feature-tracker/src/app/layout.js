@@ -25,6 +25,9 @@ import { GoogleTagManager } from '@next/third-parties/google'
 export const metadata = {
   title: "Feature Tracker",
   description: "Realtime tracking of features added to AI apps",
+  other: {
+    "google-site-verification": "bURyk-A5z78A9pWZ9G3gylCjZcgses8KXg3fa0ETXcs"
+  }
 };
 
 export default function RootLayout({ children }) {
