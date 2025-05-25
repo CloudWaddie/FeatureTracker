@@ -8,7 +8,19 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import Image from "next/image";
+import {
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuIndicator,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+  NavigationMenuViewport,
+  navigationMenuTriggerStyle,
+} from "@/components/ui/navigation-menu"
+import { GoogleTagManager } from '@next/third-parties/google'
+
 
 export const metadata = {
   title: "Feature Tracker",
@@ -19,6 +31,7 @@ export default function RootLayout({ children }) {
   return (
     <SessionProvider>
       <html lang="en" className="dark">
+        <GoogleTagManager gtmId="GTM-WL7RJ9WG"/>
         <head>
           <link
           rel="alternate"
@@ -32,19 +45,42 @@ export default function RootLayout({ children }) {
           <div className="sticky top-0 z-50 flex flex-col min-h-10 border-b border-solid border-white min-w-screen bg-gray-950">
             <div className="flex flex-row justify-between items-center p-4">
               <div>
-                <h1 className="text-4xl font-bold">Feature Tracker</h1>
-                <p className="text-xs">Realtime tracking of features added to AI apps</p>
+                <Link href="/">
+                  <h1 className="text-4xl font-bold">Feature Tracker</h1>
+                  <p className="text-xs">Realtime tracking of features added to AI apps</p>
+                </Link>
               </div>
-              <div className="flex flex-row gap-5">
-                <Link href="/" className="text-sm mb-1">Home</Link>
-                <Link href="/model-checker" className="text-sm">Model Checker</Link>
-              </div>
+              <NavigationMenu>
+                <NavigationMenuList className="flex flex-row gap-5">
+                  <NavigationMenuItem>
+                    <NavigationMenuTrigger>Models</NavigationMenuTrigger>
+                    <NavigationMenuContent align="end">
+                      <ul className="grid gap-3 p-4">
+                        <li>
+                          <NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
+                            <Link href="/model-checker">
+                              Model Checker
+                            </Link>
+                          </NavigationMenuLink>
+                        </li>
+                        <li>
+                          <NavigationMenuLink asChild className={`${navigationMenuTriggerStyle()} opacity-50 pointer-events-none`}>
+                            <Link href="#" aria-disabled="true">
+                              Leaderboard Viewer (coming soon)
+                            </Link>
+                          </NavigationMenuLink>
+                        </li>
+                      </ul>
+                    </NavigationMenuContent>
+                  </NavigationMenuItem>
+                </NavigationMenuList>
+              </NavigationMenu>
             </div>
           </div>  
           <div className="p-4 flex-grow">
             {children}
           </div>
-          <footer className="fixed bottom-4 right-4 z-50 flex items-center gap-2 p-3 bg-gray-900 rounded-full shadow-lg">
+          <footer className="fixed bottom-4 right-4 z-50 hidden sm:flex items-center gap-2 p-3 bg-gray-900 rounded-full shadow-lg">
             <p className="text-sm text-white">Made with 💚 by</p>
             <HoverCard>
               <HoverCardTrigger asChild>
