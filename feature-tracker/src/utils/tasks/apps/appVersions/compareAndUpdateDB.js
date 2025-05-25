@@ -35,7 +35,11 @@ export default async function compareAndUpdateDB(stringsXMLPath, appId) {
 
     const diffOptions = { context: 3 };
     const diff = createPatch('strings.xml', currentStrings, newStrings, 'Current Strings (XML)', 'New Strings (XML)', diffOptions);
-    
+    // Check if the patch has any actual differences apart from the header
+    if (diff.split('\n').length <= 5) {
+        console.log("No changes detected in the strings XML file.");
+        return; // No changes to update
+    }
     // Update the file with the new strings
     try {
         await fs.writeFile(currentStringsFilePath, newStrings, 'utf-8'); // Changed to async
