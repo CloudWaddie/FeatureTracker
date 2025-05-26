@@ -7,7 +7,7 @@ export async function GET(request) {
         return new Response("No apps found", { status: 404 });
     }
     // Search for appId that doesn't contain numbers
-    const filteredApps = apps.filter((app) => isNaN(app.appId));
+    const filteredApps = apps.filter((app) =>  !/\d/.test(app.appId));
     return NextResponse.json(filteredApps, {
         status: 200,
         headers: {

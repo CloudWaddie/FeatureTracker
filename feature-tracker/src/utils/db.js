@@ -823,7 +823,7 @@ export async function getAllApps() {
     return new Promise((resolve, reject) => {
         currentDb.all("SELECT appId FROM appVersions", (err, rows) => {
             if (err) {
-                console.error("Error fetching ndroid apps:", err.message);
+                console.error("Error fetching Android apps:", err.message);
                 reject(err);
             } else {
                 resolve(rows);
