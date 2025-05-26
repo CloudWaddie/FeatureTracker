@@ -4,3 +4,4 @@ https://mistral.ai/sitemap.xml
 https://www.anthropic.com/sitemap.xml
 https://ai.meta.com/sitemap.xml
 https://deepmind.google/sitemap.xml
+https://qwenlm.github.io/en/sitemap.xml
