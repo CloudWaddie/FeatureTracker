@@ -65,4 +65,5 @@ export default async function lmarenaController() {
             await browser.close();
         }
     }
+    return "lmarenaController task completed successfully.";
 }
