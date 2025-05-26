@@ -815,3 +815,19 @@ export async function getFeedItem(id) {
         });
     });
 }
+
+export async function getAllApps() {
+    const currentDb = await getDb();
+    if (!currentDb) throw new Error("Database connection not available.");
+    
+    return new Promise((resolve, reject) => {
+        currentDb.all("SELECT appId FROM appVersions", (err, rows) => {
+            if (err) {
+                console.error("Error fetching ndroid apps:", err.message);
+                reject(err);
+            } else {
+                resolve(rows);
+            }
+        });
+    });
+}

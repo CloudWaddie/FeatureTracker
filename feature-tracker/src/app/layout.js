@@ -11,15 +11,31 @@ import {
 import {
   NavigationMenu,
   NavigationMenuContent,
-  NavigationMenuIndicator,
   NavigationMenuItem,
   NavigationMenuLink,
   NavigationMenuList,
   NavigationMenuTrigger,
-  NavigationMenuViewport,
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu"
 import { GoogleTagManager } from '@next/third-parties/google'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { Info } from "lucide-react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 
 
 export const metadata = {
@@ -50,8 +66,52 @@ export default function RootLayout({ children }) {
               <div>
                 <Link href="/">
                   <h1 className="text-4xl font-bold">Feature Tracker</h1>
-                  <p className="text-xs">Realtime tracking of features added to AI apps</p>
                 </Link>
+                <div className="flex items-center"> {/* Align subtitle and icon */}
+                  <p className="text-xs">Realtime tracking of features added to AI apps</p>
+                  {/* Little info icon yay - positioned to the right of the subtitle */}
+                  <div className="ml-2"> {/* Add a small margin to the left of the icon */}
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <button className="text-gray-400 hover:text-white transition-colors">
+                          <Info className="w-4 h-4 inline-block" /> {/* Adjusted size slightly */}
+                        </button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Feature Tracker</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This app tracks features added to AI applications in real-time, allowing users to see the latest updates and changes. I spent ages making this, so I really appreciate your support!
+                            { /* Have a nice little accordion */ }
+                            <Accordion type="single" collapsible className="mt-4">
+                              <AccordionItem value="item-1">
+                                <AccordionTrigger>Why did I make this?</AccordionTrigger>
+                                <AccordionContent>
+                                  I made this app to help developers and users keep track of the features being added to AI applications. It provides a simple and effective way to see what&apos;s new and what has changed in real-time.
+                                </AccordionContent>
+                              </AccordionItem>
+                              <AccordionItem value="item-2">
+                                <AccordionTrigger>How does it work?</AccordionTrigger>
+                                <AccordionContent>
+                                  The app uses a combination of web scraping and API calls to gather data from various AI applications. It then processes this data and displays it in a user-friendly format, allowing users to easily see the latest features and updates.
+                                </AccordionContent>
+                              </AccordionItem>
+                              <AccordionItem value="item-3">
+                                <AccordionTrigger>Do you have an RSS feed?</AccordionTrigger>
+                                <AccordionContent>
+                                  Yes, we do! You can subscribe to our RSS feed to get the latest updates directly in your feed reader. <Link href="/api/rss" className="text-blue-500 underline">Click here to view the RSS feed</Link>.
+                                </AccordionContent>
+                              </AccordionItem>
+                            </Accordion>
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Close</AlertDialogCancel>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </div>
               </div>
               <NavigationMenu>
                 <NavigationMenuList className="flex flex-row gap-5">
@@ -70,6 +130,20 @@ export default function RootLayout({ children }) {
                           <NavigationMenuLink asChild className={`${navigationMenuTriggerStyle()} opacity-50 pointer-events-none`}>
                             <Link href="#" aria-disabled="true">
                               Leaderboard Viewer (coming soon)
+                            </Link>
+                          </NavigationMenuLink>
+                        </li>
+                      </ul>
+                    </NavigationMenuContent>
+                  </NavigationMenuItem>
+                  <NavigationMenuItem>
+                    <NavigationMenuTrigger>Apps</NavigationMenuTrigger>
+                    <NavigationMenuContent align="end">
+                      <ul className="grid gap-3 p-4">
+                        <li>
+                          <NavigationMenuLink asChild className={`${navigationMenuTriggerStyle()}`}>
+                            <Link href="/strings-viewer">
+                              Strings Viewer
                             </Link>
                           </NavigationMenuLink>
                         </li>
