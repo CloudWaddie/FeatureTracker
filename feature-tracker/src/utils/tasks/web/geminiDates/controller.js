@@ -61,4 +61,5 @@ export default async function geminiDatesController() {
     } catch (error) {
       console.error("Error fetching or processing dates:", error);
     }
+    return "Gemini dates controller is running...";
 }

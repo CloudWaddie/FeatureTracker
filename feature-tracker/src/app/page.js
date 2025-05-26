@@ -108,7 +108,7 @@ function PageContent() {
 
   return (
     <>
-      <p>Last checked for updates: {lastChecked ? timeSince.format(-secondsDiff, "second") : 'Never'}</p>
+      <p>Last refreshed: {lastChecked ? timeSince.format(-secondsDiff, "second") : 'Never'}</p>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {updates.filter(update => !update.isHidden).map((update) => {
           const typeDisplayName = typeDisplayNameMap[update.type] || update.type;

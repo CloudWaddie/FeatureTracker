@@ -2,8 +2,9 @@ import { getAllApps } from "@/utils/db";
 import { NextResponse } from "next/server";
 
 export async function GET(request) {
+    let apps;
     try {
-        const apps = await getAllApps();
+        apps = await getAllApps();
     } catch (error) {
         console.error("Error fetching apps:", error);
         return new Response("Internal Server Error", { status: 500 });
