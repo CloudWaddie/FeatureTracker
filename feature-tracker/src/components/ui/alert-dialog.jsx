@@ -95,13 +95,18 @@ function AlertDialogTitle({
 
 function AlertDialogDescription({
   className,
+  children, // Explicitly destructure children
   ...props
 }) {
   return (
-    <AlertDialogPrimitive.Description
-      data-slot="alert-dialog-description"
-      className={cn("text-muted-foreground text-sm", className)}
-      {...props} />
+    <AlertDialogPrimitive.Description asChild {...props}>
+      <div
+        data-slot="alert-dialog-description" // data-slot moved to the actual rendered element
+        className={cn("text-muted-foreground text-sm", className)}
+      >
+        {children}
+      </div>
+    </AlertDialogPrimitive.Description>
   );
 }
 
