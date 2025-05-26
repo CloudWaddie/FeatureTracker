@@ -18,6 +18,6 @@ export async function GET(request) {
         return new Response(fileContent, { status: 200, headers: { 'Content-Type': 'application/xml' } });
     } catch (error) {
         console.error('Error reading strings file:', error);
-        return new Response(JSON.stringify({ error: 'Error reading strings file' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ error: 'Error reading strings file' }), { status: 500, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=1800, must-revalidate' } });
     }
 }
