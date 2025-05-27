@@ -1,12 +1,13 @@
 import { getAllApps } from "@/utils/db";
 import { NextResponse } from "next/server";
+import logger from "@/lib/logger";
 
 export async function GET(request) {
     let apps;
     try {
         apps = await getAllApps();
     } catch (error) {
-        console.error("Error fetching apps:", error);
+        logger.error("Error fetching apps:", error);
         return new Response("Internal Server Error", { status: 500 });
     }
     if (!apps) {

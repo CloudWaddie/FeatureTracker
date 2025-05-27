@@ -15,6 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import logger from '@/lib/logger';
 
 function PageContent() {
   const [updates, setUpdates] = useState(null);
@@ -37,7 +38,7 @@ function PageContent() {
       const data = await response.json();
       setTotalPages(data);
     } catch (err) {
-      console.error("Fetching total pages failed:", err);
+      logger.error("Fetching total pages failed:", err);
       // Optionally set an error state for total pages if needed
     }
   }, []); // setTotalPages is stable
@@ -72,7 +73,7 @@ function PageContent() {
       setUpdates(data);
       setError(null);
     } catch (err) {
-      console.error("Fetching updates failed:", err);
+      logger.error("Fetching updates failed:", err);
       setError(err.message);
       setUpdates(null);
     } finally {

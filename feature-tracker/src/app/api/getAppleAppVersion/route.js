@@ -1,5 +1,6 @@
 import store from "app-store-scraper";
 import { NextResponse } from "next/server";
+import logger from '@/lib/logger';
 
 
 export async function GET(request) {
@@ -21,10 +22,10 @@ export async function GET(request) {
         if (!isNaN(parsed)) {
             initialLastUpdatedNum = parsed;
         } else {
-             console.warn(`initialLastUpdated '${initialLastUpdatedStr}' is not a valid number. Defaulting to 0.`);
+            logger.warn(`initialLastUpdated '${initialLastUpdatedStr}' is not a valid number. Defaulting to 0.`);
         }
     } else {
-        console.log('initialLastUpdated not provided, defaulting to 0');
+        logger.log('initialLastUpdated not provided, defaulting to 0');
     }
 
 
@@ -42,7 +43,7 @@ export async function GET(request) {
         const lastUpdatedNum = Date.parse(lastUpdatedStr);
 
         if (isNaN(lastUpdatedNum)) {
-            console.error('Error parsing lastUpdated string from store:', lastUpdatedStr);
+            logger.error('Error parsing lastUpdated string from store:', lastUpdatedStr);
             // Use NextResponse for consistency
             return NextResponse.json({ error: 'Invalid date format received from store' }, { status: 500 })
         }
@@ -58,7 +59,7 @@ export async function GET(request) {
         }
     }
     catch (error) {
-        console.error('Error fetching app version:', error)
+        logger.error('Error fetching app version:', error)
         // Use NextResponse
         return NextResponse.json({ error: 'Error fetching app version' }, { status: 500 })
     }

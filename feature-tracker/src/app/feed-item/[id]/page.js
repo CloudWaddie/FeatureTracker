@@ -13,6 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import logger from '@/lib/logger';
 
 function FeedItemDetailContent() {
   const params = useParams();
@@ -33,7 +34,7 @@ function FeedItemDetailContent() {
       setFeedItem(data);
       setError(null);
     } catch (err) {
-      console.error("Fetching feed item failed:", err);
+      logger.error("Fetching feed item failed:", err);
       setError(err.message);
       setFeedItem(null);
     } finally {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { logClientError } from '@/lib/utils';
 import {
     Command,
     CommandEmpty,
@@ -47,7 +48,7 @@ export default function StringsViewerPage() {
                 // Assuming data is an array of objects like { appId: "..." }
                 setApps(data.map(item => item.appId));
             } catch (error) {
-                console.error("Failed to fetch apps:", error);
+                logClientError("error", "Failed to fetch apps in strings-viewer", { error: error.message, stack: error.stack });
                 setFetchError("Failed to load app list. Please try again later.");
             }
         };
@@ -67,7 +68,7 @@ export default function StringsViewerPage() {
                     const data = await response.text(); // Assuming the API returns XML as text
                     setXmlData(data);
                 } catch (error) {
-                    console.error("Failed to fetch strings:", error);
+                    logClientError("error", `Failed to fetch strings for ${selectedAppId} in strings-viewer`, { error: error.message, stack: error.stack, selectedAppId });
                     setXmlData(''); // Clear data on error
                     setFetchError(`Failed to fetch strings for ${selectedAppId}. This might mean the app does not have a strings file.`);
                 }
@@ -112,7 +113,7 @@ export default function StringsViewerPage() {
                                         onSelect={() => {
                                             setSelectedAppId(appId); // Store selected appId
                                             setPopoverOpen(false);
-                                            console.log("Selected app ID:", appId);
+                                            logClientError("info", "Selected app ID in strings-viewer", { appId });
                                         }}
                                     >
                                         {appId} {/* Display appId */}

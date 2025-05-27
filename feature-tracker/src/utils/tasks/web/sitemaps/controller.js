@@ -2,6 +2,7 @@ import Sitemapper from 'sitemapper';
 import fs from "fs";
 import { cwd } from "process";
 import { updateNewSitemaps, clearNewSitemapsByURL, findAdditionsSitemaps, findDeletionsSitemaps, clearOldSitemapsByURL, updateOldSitemaps, updateFeed } from '../../../../utils/db.js';
+import logger from '../../../../lib/logger.js';
 
 export default async function sitemapController() {
     const configPath = `${cwd()}/src/utils/tasks/web/sitemaps/config.txt`;
@@ -20,7 +21,7 @@ export default async function sitemapController() {
         if (trimmedLine.startsWith('http') && trimmedLine.endsWith('.xml')) {
             sitemapUrls.push(trimmedLine);
         } else {
-            console.warn(`URL "${trimmedLine}" is not (likely to be) a valid URL in ${configPath}. Ignoring.`);
+            logger.warn(`URL "${trimmedLine}" is not (likely to be) a valid URL in ${configPath}. Ignoring.`);
         }
     }
     // Ensure sitemapUrls are unique
@@ -64,9 +65,9 @@ export default async function sitemapController() {
             } else {
                 sites = []; // Or handle as an error/empty case
             }
-            console.log(`Fetched and deduplicated sitemap from ${url}. Original count: ${sitemapObject && sitemapObject.sites ? sitemapObject.sites.length : (Array.isArray(sitemapObject) ? sitemapObject.length : 0)}, Unique count: ${sites.length}. Effective URL: ${actualSitemapUrl}`);
+            logger.info(`Fetched and deduplicated sitemap from ${url}. Original count: ${sitemapObject && sitemapObject.sites ? sitemapObject.sites.length : (Array.isArray(sitemapObject) ? sitemapObject.length : 0)}, Unique count: ${sites.length}. Effective URL: ${actualSitemapUrl}`);
         } catch (error) {
-            console.error(`Error fetching sitemap from ${url}:`, error);
+            logger.error({ err: error, url }, `Error fetching sitemap from ${url}`);
             continue;
         }
 
@@ -79,12 +80,12 @@ export default async function sitemapController() {
         await updateOldSitemaps({ sites: sites, url: actualSitemapUrl });
 
         if (additions.length === 0 && deletions.length === 0) {
-            console.log(`No changes detected for ${actualSitemapUrl}`);
+            logger.info(`No changes detected for ${actualSitemapUrl}`);
             continue;
         }
         else {
-            console.log(`Additions for ${actualSitemapUrl}:`, additions);
-            console.log(`Deletions for ${actualSitemapUrl}:`, deletions);
+            logger.info({ additions, url: actualSitemapUrl }, `Additions for ${actualSitemapUrl}`);
+            logger.info({ deletions, url: actualSitemapUrl }, `Deletions for ${actualSitemapUrl}`);
             const readableAdditions = additions.map(item => item.url).join(', '); // item.url refers to db schema
             const readableDeletions = deletions.map(item => item.url).join(', ');
             const dataToAddToFeed = {
@@ -92,7 +93,7 @@ export default async function sitemapController() {
                 details: `Additions: ${readableAdditions}, Deletions: ${readableDeletions}`,
                 appId: actualSitemapUrl, // Use actualSitemapUrl for consistency
             };
-            //console.log(`Data to add to feed for ${actualSitemapUrl}:`, dataToAddToFeed);
+            logger.debug({actualSitemapUrl, dataToAddToFeed}, `Data to add to feed for ${actualSitemapUrl}`);
             await updateFeed(dataToAddToFeed);
         }
     }
