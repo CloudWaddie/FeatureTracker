@@ -1,4 +1,5 @@
 import { getFeedItem } from "@/utils/db";
+import logger from "@/lib/logger";
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -15,7 +16,7 @@ export async function GET(request) {
     }
     return new Response(JSON.stringify(feedItem), { status: 200 });
   } catch (error) {
-    console.error("Error fetching feed item:", error);
+    logger.error("Error fetching feed item:", error);
     return new Response("Internal Server Error", { status: 500 });
   }
 }

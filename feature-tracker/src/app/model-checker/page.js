@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react';
+import { logClientError } from '@/lib/utils';
 import {
     Table,
     TableBody,
@@ -30,7 +31,7 @@ export default function ModelChecker() {
                 setAllFetchedModels(sortedData);
                 setModels(sortedData); // Initialize displayed models
             } catch (error) {
-                console.error('Error fetching initial models:', error);
+                logClientError('error', 'Error fetching initial models in model-checker', { error: error.message, stack: error.stack });
                 setAllFetchedModels([]);
                 setModels([]);
             }

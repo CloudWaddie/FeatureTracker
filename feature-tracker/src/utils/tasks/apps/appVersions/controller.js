@@ -11,6 +11,7 @@ import checkAppleForUpdates from "./checkAppleForUpdates.js";
 import downloadApk from "./downloadApk.js";
 import extractStrings from "./extractStrings.js";
 import compareAndUpdateDB from "./compareAndUpdateDB.js";
+import logger from '../../../../lib/logger.js';
 
 export default async function appVersionController() {
     const configPath = `${cwd()}/src/utils/tasks/apps/appVersions/config.txt`;
@@ -38,37 +39,37 @@ export default async function appVersionController() {
             if (currentStore) {
                 appListsByStore[currentStore].push(trimmedLine);
             } else {
-                console.warn(`App ID "${trimmedLine}" found before any store section header in ${configPath}. Ignoring.`);
+                logger.warn(`App ID "${trimmedLine}" found before any store section header in ${configPath}. Ignoring.`);
             }
         }
     }
     // --- End of parsing logic ---
 
-    console.log("Parsed app lists by store:", appListsByStore);
+    logger.info({ appListsByStore }, "Parsed app lists by store");
 
     // --- Modified looping logic ---
     for (const store in appListsByStore) {
         if (appListsByStore.hasOwnProperty(store)) {
-            console.log(`--- Checking apps for store: ${store} ---`);
+            logger.info(`--- Checking apps for store: ${store} ---`);
             const apps = appListsByStore[store];
 
             for (const app of apps) {
-                console.log(`Checking app: ${app} in store ${store}`);
+                logger.info(`Checking app: ${app} in store ${store}`);
 
                 let lastUpdatedData; // Variable to hold data from get...LastUpdated
                 let updateCheckResult; // Variable to hold data from check...ForUpdates
 
                 // --- Conditional function calls based on store ---
                 if (store === 'android') {
-                    console.log(`Using Android specific functions for ${app}`);
+                    logger.info(`Using Android specific functions for ${app}`);
                     lastUpdatedData = await getLastUpdated(app);
                     updateCheckResult = await checkAndroidForUpdates(lastUpdatedData.lastUpdated, app);
                 } else if (store === 'ios') {
-                    console.log(`Using iOS specific functions for ${app}`);
+                    logger.info(`Using iOS specific functions for ${app}`);
                     lastUpdatedData = await getLastUpdated(app);
                     updateCheckResult = await checkAppleForUpdates(lastUpdatedData.lastUpdated, app);
                 } else {
-                    console.warn(`Unknown store "${store}" for app "${app}". Cannot check for updates. Skipping.`);
+                    logger.warn(`Unknown store "${store}" for app "${app}". Cannot check for updates. Skipping.`);
                     continue; // Skip to the next app if the store is not recognized
                 }
                 // --- End of conditional function calls ---
@@ -76,7 +77,7 @@ export default async function appVersionController() {
                 // Now, check the result from the store-specific function call
                 // Make sure updateCheckResult is defined before accessing its properties
                 if (updateCheckResult && updateCheckResult.updateAvailable) {
-                    console.log(`Update available for ${app} in ${store}! Details: ${updateCheckResult.updateString}`);
+                    logger.info(`Update available for ${app} in ${store}! Details: ${updateCheckResult.updateString}`);
                     const data = {
                         type: `appversion-${store}`,
                         details: updateCheckResult.updateString,
@@ -88,25 +89,25 @@ export default async function appVersionController() {
                     await updateDB(data);
                     if (store === 'android') {
                             try {
-                                console.log(`Starting background APK processing for ${updateCheckResult.package}`);
+                                logger.info(`Starting background APK processing for ${updateCheckResult.package}`);
                                 await downloadApk(updateCheckResult.package);
                                 // Wait for 100 milliseconds to give time for the server to start listening again
                                 await new Promise(resolve => setTimeout(resolve, 1000));
                                 const stringsXMLPath = await extractStrings(`./apk-files/${updateCheckResult.package}.apk`);
                                 await new Promise(resolve => setTimeout(resolve, 1000));
-                                console.log(`Extracted strings from APK for ${updateCheckResult.package}`);
+                                logger.info(`Extracted strings from APK for ${updateCheckResult.package}`);
                                 // Compare and update the database with the new strings
                                 await compareAndUpdateDB(stringsXMLPath, updateCheckResult.package);
-                                console.log(`Finished background APK processing for ${updateCheckResult.package}`);
+                                logger.info(`Finished background APK processing for ${updateCheckResult.package}`);
                             } catch (error) {
-                                console.error(`Error during background APK processing for ${updateCheckResult.package}:`, error);
+                                logger.error({ err: error, package: updateCheckResult.package }, `Error during background APK processing for ${updateCheckResult.package}`);
                             }
                     }
                 } else {
                     // This will catch cases where updateCheckResult is not set (unknown store)
                     // or where updateAvailable is false.
                      if (updateCheckResult) { // Only log "No updates" if we successfully got a result
-                         console.log(`No updates available for ${app} in ${store}.`);
+                         logger.info(`No updates available for ${app} in ${store}.`);
                      }
                      // If updateCheckResult was null/undefined, the warning above handles it.
                 }
@@ -115,6 +116,6 @@ export default async function appVersionController() {
     }
     // --- End of modified looping logic ---
 
-    console.log("--- App controller finished ---");
+    logger.info("--- App controller finished ---");
     return "App controller finished running.";
 }

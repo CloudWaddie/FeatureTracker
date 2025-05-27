@@ -1,5 +1,6 @@
 import gplay from "google-play-scraper";
 import { NextResponse } from "next/server";
+import logger from "@/lib/logger";
 
 
 export async function GET(request) {
@@ -13,7 +14,7 @@ export async function GET(request) {
     }
     if (!initialLastUpdated) {
         initialLastUpdated = '0' // Default to 0 if initialLastUpdated is not provided
-        console.log('initialLastUpdated not provided, defaulting to 0')
+        logger.info('initialLastUpdated not provided, defaulting to 0')
     }
 
     try {
@@ -34,7 +35,7 @@ export async function GET(request) {
         }
     }
     catch (error) {
-        console.error('Error fetching app version:', error)
+        logger.error('Error fetching app version:', error)
         // Use NextResponse
         return NextResponse.json({ error: 'Error fetching app version' }, { status: 500 })
     }
