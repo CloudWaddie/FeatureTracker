@@ -11,6 +11,7 @@ export default async function downloadApk(appId) {
   const apkeepExecutable = isWindows ? 'apkeep-windows.exe' : 'apkeep-linux';
   const apkeepPath = path.resolve(process.cwd(), 'src', 'utils', 'tasks', 'apps', 'resources', apkeepExecutable);
   const apkFilesDir = path.resolve(process.cwd(), 'apk-files');
+  let source = 'google-play';
 
   try {
     console.log("Preparing APK directory:", apkFilesDir);
@@ -43,7 +44,7 @@ export default async function downloadApk(appId) {
     console.log(`Executing apkeep for: ${appId}`);
     const apkeepProcess = spawn(apkeepPath, [
       '--accept-tos',
-      '-d', 'google-play',
+      '-d', source,
       '--aas-token', process.env.AAS_TOKEN,
       '-e', process.env.APK_EMAIL,
       '-a', appId,
