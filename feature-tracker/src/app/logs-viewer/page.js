@@ -35,20 +35,32 @@ export default function LogsViewerPage() {
       try {
         const response = await fetch('/api/getLogs');
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ message: `HTTP error! status: ${response.status}` }));
-          throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+          const errorData = await response.text().catch(() => `HTTP error! status: ${response.status}`);
+          throw new Error(errorData || `HTTP error! status: ${response.status}`);
         }
-        const data = await response.json();
-        const processedLogs = data.map(log => ({
-          ...log,
-          timestamp: log.timestamp || new Date(0).toISOString() // Default to epoch if timestamp is missing
-        }));
+        const textData = await response.text();
+        const lines = textData.trim().split('\n');
+        const processedLogs = lines.map(line => {
+          try {
+            const log = JSON.parse(line);
+            return {
+              ...log,
+              timestamp: log.timestamp || new Date(0).toISOString() // Default to epoch if timestamp is missing
+            };
+          } catch (parseError) {
+            console.error('Failed to parse log line:', line, parseError);
+            // Optionally, log this error to the server or handle it appropriately
+            // For now, we'll return null and filter it out later, or you can skip it
+            return null; 
+          }
+        }).filter(log => log !== null); // Filter out any logs that failed to parse
+
         setAllLogs(processedLogs);
         setError(null); // Clear previous errors on successful fetch
       } catch (e) {
         // Log the error to the server
         logClientError('error', 'Failed to fetch logs in LogsViewerPage', { 
-          errorMessage: e.message, 
+          msg: e.message, 
           errorStack: e.stack,
           errorName: e.name 
         });
@@ -101,14 +113,14 @@ export default function LogsViewerPage() {
           }
         }
 
-        const levelMatch = selectedLogLevel ? log.level === selectedLogLevel : true;
+        const levelMatch = selectedLogLevel ? (log.level?.toUpperCase() === selectedLogLevel) : true; // selectedLogLevel is already uppercase from uniqueLogLevels and onSelect
         return messageMatch && levelMatch;
       })
       .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)); // Newest first
   }, [allLogs, searchTerm, selectedLogLevel]);
 
   const uniqueLogLevels = useMemo(() => {
-    const levels = new Set(allLogs.map(log => log.level).filter(Boolean));
+    const levels = new Set(allLogs.map(log => log.level?.toUpperCase()).filter(Boolean));
     return ["", ...Array.from(levels).sort()]; // Add "" for "All Levels"
   }, [allLogs]);
 
@@ -217,17 +229,17 @@ export default function LogsViewerPage() {
                   <TableCell>
                     <span className={cn(
                       "px-2 py-0.5 rounded-full text-xs font-semibold",
-                      log.level === "ERROR" && "bg-red-100 text-red-800",
-                      log.level === "WARN" && "bg-yellow-100 text-yellow-800",
-                      log.level === "INFO" && "bg-blue-100 text-blue-800",
-                      log.level === "DEBUG" && "bg-green-100 text-green-800",
-                      log.level === "FATAL" && "bg-purple-100 text-purple-800",
-                      !["ERROR", "WARN", "INFO", "DEBUG", "FATAL"].includes(log.level) && "bg-gray-100 text-gray-800"
+                      log.level?.toUpperCase() === "ERROR" && "bg-red-100 text-red-800",
+                      log.level?.toUpperCase() === "WARN" && "bg-yellow-100 text-yellow-800",
+                      log.level?.toUpperCase() === "INFO" && "bg-blue-100 text-blue-800",
+                      log.level?.toUpperCase() === "DEBUG" && "bg-green-100 text-green-800",
+                      log.level?.toUpperCase() === "FATAL" && "bg-purple-100 text-purple-800",
+                      !["ERROR", "WARN", "INFO", "DEBUG", "FATAL"].includes(log.level?.toUpperCase()) && "bg-gray-100 text-gray-800"
                     )}>
                       {log.level}
                     </span>
                   </TableCell>
-                  <TableCell className="whitespace-pre-wrap break-all">{typeof log.message === 'object' ? JSON.stringify(log.message, null, 2) : log.message}</TableCell>
+                  <TableCell className="whitespace-pre-wrap break-all">{typeof log.message === 'object' ? JSON.stringify(log.message, null, 2) : String(log.message)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
