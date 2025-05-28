@@ -52,6 +52,7 @@ export default function RootLayout({ children }) {
       <html lang="en" className="dark">
         <GoogleTagManager gtmId="GTM-WL7RJ9WG"/>
         <head>
+          <link rel="icon" href="/icon.jpg" />
           <link
           rel="alternate"
           type="application/rss+xml"

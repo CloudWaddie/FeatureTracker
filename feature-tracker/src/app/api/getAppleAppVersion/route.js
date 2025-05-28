@@ -25,7 +25,7 @@ export async function GET(request) {
             logger.warn(`initialLastUpdated '${initialLastUpdatedStr}' is not a valid number. Defaulting to 0.`);
         }
     } else {
-        logger.log('initialLastUpdated not provided, defaulting to 0');
+        logger.info('initialLastUpdated not provided, defaulting to 0');
     }
 
 

@@ -43,6 +43,7 @@
     "rss": "^1.2.2",
     "rss-parser": "^3.13.0",
     "selenium-webdriver": "^4.31.0",
+    "server-cli-only": "^0.3.2",
     "server-only": "^0.0.1",
     "sitemapper": "^3.2.20",
     "sonner": "^2.0.3",

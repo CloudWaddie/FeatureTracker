@@ -1,7 +1,13 @@
 import logger from '@/lib/logger';
 import { NextResponse } from 'next/server';
+import { auth } from "@/auth";
 
 export async function POST(request) {
+  const session = await auth();
+  if (!session) {
+    return NextResponse.json({ error: 'You must be logged in.' }, { status: 401 });
+  }
+
   try {
     const { level = 'error', message, context } = await request.json();
 

@@ -27,73 +27,117 @@ export async function GET() {
   }
 
   const logFilePath = path.join(process.cwd(), 'logs', 'app.log');
+
   try {
     if (!fs.existsSync(logFilePath)) {
       logger.warn('Log file does not exist:', logFilePath);
-      return new Response(JSON.stringify([]), { // Return empty array if log file doesn't exist
+      return new Response(JSON.stringify([]), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    const fileContent = fs.readFileSync(logFilePath, 'utf8');
-    const lines = fileContent.trim().split('\n');
-    const parsedLogs = [];
+    // Return a Promise that resolves with the Response object
+    return new Promise((resolve) => {
+      const stream = fs.createReadStream(logFilePath, { encoding: 'utf8' });
+      const parsedLogs = [];
+      let validLineFound = false;
+      let leftover = ''; // To handle partial lines from chunks
 
-    if (fileContent.trim() === '') {
-      // Handle empty log file gracefully
-      return new Response(JSON.stringify([]), { // Return empty array for no logs
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
+      stream.on('data', (chunk) => {
+        const lines = (leftover + chunk).split('\n');
+        leftover = lines.pop() || ''; // Ensure leftover is always a string, handles last line correctly
+
+        for (const line of lines) {
+          if (line.trim() === '') continue; // Skip empty lines
+
+          try {
+            const logEntry = JSON.parse(line);
+            parsedLogs.push({
+              timestamp: new Date(logEntry.time).toISOString(),
+              level: pinoLevelToString(logEntry.level),
+              message: logEntry.msg,
+              hostname: logEntry.hostname,
+              pid: logEntry.pid,
+              // Include other relevant fields from logEntry if needed
+            });
+            validLineFound = true;
+          } catch (lineParseError) {
+            logger.warn(`Skipping invalid JSON line in log file '${logFilePath}':`, lineParseError.message, "Line content (first 200 chars):", line.substring(0, 200));
+          }
+        }
       });
-    }
 
-    let validLineFound = false;
-    for (const [index, line] of lines.entries()) {
-      if (line.trim() === '') continue; // Skip empty lines
+      stream.on('end', () => {
+        // Process any leftover data from the last chunk
+        if (leftover.trim() !== '') {
+          try {
+            const logEntry = JSON.parse(leftover);
+            parsedLogs.push({
+              timestamp: new Date(logEntry.time).toISOString(),
+              level: pinoLevelToString(logEntry.level),
+              message: logEntry.msg,
+              hostname: logEntry.hostname,
+              pid: logEntry.pid,
+            });
+            validLineFound = true;
+          } catch (lineParseError) {
+            logger.warn(`Skipping invalid JSON line (final leftover) in log file '${logFilePath}':`, lineParseError.message, "Line content (first 200 chars):", leftover.substring(0, 200));
+          }
+        }
 
-      try {
-        const logEntry = JSON.parse(line);
-        parsedLogs.push({
-          timestamp: new Date(logEntry.time).toISOString(),
-          level: pinoLevelToString(logEntry.level),
-          message: logEntry.msg,
-          hostname: logEntry.hostname,
-          pid: logEntry.pid,
-          // Include other relevant fields from logEntry if needed
-        });
-        validLineFound = true;
-      } catch (lineParseError) {
-        logger.warn(`Skipping invalid JSON line ${index + 1} in log file '${logFilePath}':`, lineParseError.message, "Line content (first 200 chars):", line.substring(0, 200));
-        // Optionally, push a placeholder error log or just skip. Current: skip.
-      }
-    }
+        try {
+            const fileStats = fs.statSync(logFilePath); // Get file stats to check if it had content
 
-    // If there was content but nothing could be parsed, it's an error.
-    // Check if lines array had non-empty content initially.
-    const hadContent = lines.some(l => l.trim() !== '');
-    if (hadContent && !validLineFound) {
-      logger.error(`Log file '${logFilePath}' contained content, but no lines could be parsed as valid JSON.`);
-      return new Response(JSON.stringify({ message: 'Log file contains invalid data that could not be parsed.', error: "No valid log entries found." }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
+            // If the file had content but no valid logs were parsed
+            if (fileStats.size > 0 && !validLineFound) {
+                logger.error(`Log file '${logFilePath}' contained content (${fileStats.size} bytes), but no lines could be parsed as valid JSON.`);
+                resolve(new Response(JSON.stringify({ message: 'Log file contains invalid data that could not be parsed.', error: "No valid log entries found." }), {
+                    status: 500,
+                    headers: { 'Content-Type': 'application/json' },
+                }));
+                return;
+            }
+        } catch (statError) {
+            // This might happen if the file is deleted between existsSync and statSync, or permission issues
+            logger.error(`Error getting stats for log file '${logFilePath}' during stream end:`, statError);
+            resolve(new Response(JSON.stringify({ message: 'Error processing log file (could not get file stats).', error: statError.message }), {
+                status: 500,
+                headers: { 'Content-Type': 'application/json' },
+            }));
+            return;
+        }
+        
+        // If no logs were parsed (e.g., empty file, or file with only whitespace/invalid lines and size was 0 or stat failed gracefully)
+        if (parsedLogs.length === 0) {
+            resolve(new Response(JSON.stringify([]), {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' },
+            }));
+            return;
+        }
+        
+        // Successfully parsed logs
+        resolve(new Response(JSON.stringify(parsedLogs), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }));
       });
-    }
 
-    return new Response(JSON.stringify(parsedLogs), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      stream.on('error', (streamError) => {
+        logger.error(`Error reading log file stream '${logFilePath}':`, streamError);
+        resolve(new Response(JSON.stringify({ message: 'Error reading log file', error: streamError.message }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' },
+        }));
+      });
     });
-  } catch (error) { // This catch is for fs.readFileSync or other unexpected errors like permission issues
-    logger.error(`Error reading or processing log file '${logFilePath}':`, error);
-    const errorMessage = error.message || 'An unexpected error occurred';
-    return new Response(JSON.stringify({ message: 'Error reading or processing log file', error: errorMessage }), {
+
+  } catch (error) { // Catches synchronous errors before Promise creation (e.g., path.join issues, or initial fs.existsSync failure)
+    logger.error(`Unexpected synchronous error in GET /api/getLogs for '${logFilePath}':`, error);
+    return new Response(JSON.stringify({ message: 'An unexpected server error occurred', error: error.message }), {
       status: 500,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
     });
   }
 }
