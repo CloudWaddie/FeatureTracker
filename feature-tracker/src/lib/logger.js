@@ -1,5 +1,5 @@
 // lib/logger.js
-import 'server-only';
+import "server-cli-only";
 import pino from 'pino';
 import path from 'path';
 import fs from 'fs'; // Required for fs.createWriteStream

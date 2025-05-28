@@ -51,10 +51,12 @@ export default async function compareAndUpdateDB(stringsXMLPath, appId) {
         return; // Or handle error appropriately
     }
     // Update the feed with the new strings
+    // Clean the < and > tags from the details by replacing them with &lt; and &gt;
+    const escapedDiff = diff.replace(/</g, '&lt;').replace(/>/g, '&gt;');
     try {
         const feedData = {
             type: 'strings',
-            details: diff,
+            details: escapedDiff,
             appId: appId
         };
         if (shouldUpdateFeed) {
