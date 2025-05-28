@@ -2,6 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input"; 
 import { signOut } from "next-auth/react";
@@ -342,6 +343,9 @@ export default function Page() {
           {/* Buttons to trigger the dialog */}
           <Button variant="outline" onClick={() => { setIsHidingCategory(true); setDialogOpen(true); }}>Hide Category</Button>
           <Button variant="outline" onClick={() => { setIsHidingCategory(false); setDialogOpen(true); }}>Show Category</Button>
+          <Link href="/logs-viewer">
+            <Button variant="outline">View Logs</Button>
+          </Link>
           <Button onClick={() => signOut()}>Sign out</Button>
         </div>
       </div>
