@@ -1,6 +1,7 @@
 import { cwd } from 'process';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
+import logger from '@/lib/logger';
 
 export async function GET(request) {
     const { searchParams } = new URL(request.url);
@@ -17,7 +18,7 @@ export async function GET(request) {
         const fileContent = await readFile(filePath, 'utf8');
         return new Response(fileContent, { status: 200, headers: { 'Content-Type': 'application/xml' } });
     } catch (error) {
-        console.error('Error reading strings file:', error);
+        logger.error('Error reading strings file:', error);
         return new Response(JSON.stringify({ error: 'Error reading strings file' }), { status: 500, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=1800, must-revalidate' } });
     }
 }

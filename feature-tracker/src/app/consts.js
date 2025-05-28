@@ -7,7 +7,8 @@ export const typeDisplayNameMap = {
     'models': 'Updated models',
     'geminiDates': 'New date placholders added',
     'rssFeed': 'Updated RSS feeds',
-    'domainFinder': 'Updated domains'
+    'domainFinder': 'Updated domains',
+    'geminiPreferences': 'Updated Gemini preferences',
   };
 
 export const FEED_ITEM_SUMMARY_LENGTH = 500;

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getTableInfo } from '@/utils/db';
 import { auth } from "@/auth";
+import logger from '@/lib/logger';
 
 export async function GET(request, context) {
   const session = await auth();
@@ -17,7 +18,7 @@ export async function GET(request, context) {
     const tableInfo = await getTableInfo(tableName);
     return NextResponse.json(tableInfo);
   } catch (error) {
-    console.error(`Error fetching table info for ${tableName}:`, error);
+    logger.error(`Error fetching table info for ${tableName}:`, error);
     return NextResponse.json({ error: `Failed to fetch table info for ${tableName}` }, { status: 500 });
   }
 }

@@ -37,7 +37,7 @@ function PageContent() {
       const data = await response.json();
       setTotalPages(data);
     } catch (err) {
-      console.error("Fetching total pages failed:", err);
+      console.error("Fetching total pages failed.");
       // Optionally set an error state for total pages if needed
     }
   }, []); // setTotalPages is stable
@@ -72,7 +72,7 @@ function PageContent() {
       setUpdates(data);
       setError(null);
     } catch (err) {
-      console.error("Fetching updates failed:", err);
+      console.error("Fetching updates failed.");
       setError(err.message);
       setUpdates(null);
     } finally {

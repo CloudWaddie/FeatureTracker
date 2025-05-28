@@ -1,15 +1,16 @@
 import fs from 'fs';
 import { cwd } from "process";
 import { getMiscData, updateMiscData, updateFeed } from '../../../db.js';
+import logger from '../../../../lib/logger.js';
 
 export default async function domainFinderController() {
-    console.log('Domain Finder Controller Running');
+    logger.info('Domain Finder Controller Running');
     const configPath = `${cwd()}/src/utils/tasks/web/domainFinders/config.txt`;
     let fileContent = '';
     try {
         fileContent = await fs.promises.readFile(configPath, 'utf8');
     } catch (error) {
-        console.error(`Error reading config file ${configPath}:`, error);
+        logger.error({ err: error, configPath }, `Error reading config file ${configPath}`);
         return 'Error reading config file';
     }
 
@@ -26,7 +27,7 @@ export default async function domainFinderController() {
         if (trimmedLine.includes('.')) {
             domainsToCheck.push(trimmedLine);
         } else {
-            console.warn(`URL "${trimmedLine}" is not (likely to be) a valid URL in ${configPath}. Ignoring.`);
+            logger.warn(`URL "${trimmedLine}" is not (likely to be) a valid URL in ${configPath}. Ignoring.`);
         }
     }
     // --- End of parsing logic ---
@@ -41,12 +42,12 @@ export default async function domainFinderController() {
     shuffleArray(domainsToCheck);
 
     if (domainsToCheck.length === 0) {
-        console.log('No domains found in config file to check.');
+        logger.info('No domains found in config file to check.');
         return 'No domains to check';
     }
 
     for (const domain of domainsToCheck) {
-        console.log(`Checking domain: ${domain}`);
+        logger.info(`Checking domain: ${domain}`);
         // Get JSON data from https://crt.sh/json?q=
         const headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
@@ -54,7 +55,7 @@ export default async function domainFinderController() {
         const url = `https://crt.sh/json?q=${domain}`;
         let data = [];
         try {
-            console.log(`Fetching data from ${url}`);
+            logger.info(`Fetching data from ${url}`);
             const response = await fetch(url, {
                 method: 'GET',
                 headers: headers,
@@ -64,14 +65,14 @@ export default async function domainFinderController() {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             data = await response.json();
-            console.log(`Successfully received data from ${url}. Data length: ${data.length}`);
+            logger.info(`Successfully received data from ${url}. Data length: ${data.length}`);
         } catch (error) {
-            console.error(`Error fetching data from ${url}:`, error);
+            logger.error({ err: error, url }, `Error fetching data from ${url}`);
             continue; // Skip to the next domain if fetch fails
         }
 
         if (!data || data.length === 0) {
-            console.warn(`No certificate data found for the domain ${domain} on crt.sh`);
+            logger.warn({ domain }, `No certificate data found for the domain ${domain} on crt.sh`);
             // Consider if you want to continue or skip if no data is found
             continue;
         }
@@ -101,7 +102,7 @@ export default async function domainFinderController() {
         }
 
         if (domainList.length === 0) {
-            console.warn(`No relevant domains extracted from crt.sh data for ${domain}`);
+            logger.warn({ domain }, `No relevant domains extracted from crt.sh data for ${domain}`);
             // Consider if you want to continue or skip if no relevant domains are found
              continue;
         }
@@ -113,7 +114,7 @@ export default async function domainFinderController() {
         let currentDomainList = [];
         let currentDataExists = false;
         try {
-            console.log(`Attempting to retrieve current data for domainFinder_${domain} from DB.`);
+            logger.info(`Attempting to retrieve current data for domainFinder_${domain} from DB.`);
             const currentDataResult = (await getMiscData(`domainFinder_${domain}`));
 
             if (currentDataResult && currentDataResult.length > 0 && currentDataResult[0].value) {
@@ -122,38 +123,36 @@ export default async function domainFinderController() {
                     currentDomainList = JSON.parse(currentDataResult[0].value);
                      // Ensure parsed data is an array, default to empty array if not
                     if (!Array.isArray(currentDomainList)) {
-                         console.error(`Data from DB for ${domain} is not an array after parsing.`);
+                         logger.error({ domain }, `Data from DB for ${domain} is not an array after parsing.`);
                          currentDomainList = []; // Reset to empty array if parsing resulted in non-array
                          currentDataExists = false; // Treat as no valid current data
                     }
                 } catch (e) {
-                    console.error(`Error parsing current data from DB for ${domain}:`, e);
+                    logger.error({ err: e, domain }, `Error parsing current data from DB for ${domain}`);
                     // If parsing fails, currentDomainList remains [], and currentDataExists is false
                 }
             } else {
-                 console.log(`No existing data found in DB for domainFinder_${domain}.`);
+                 logger.info(`No existing data found in DB for domainFinder_${domain}.`);
             }
         } catch (dbError) {
-             console.error(`Error retrieving data from DB for ${domain}:`, dbError);
+             logger.error({ err: dbError, domain }, `Error retrieving data from DB for ${domain}`);
              // If DB retrieval fails, currentDomainList remains [], and currentDataExists is false
         }
-
 
         // Check for differences
         const newDomains = uniqueDomainList.filter(item => !currentDomainList.includes(item));
         const removedDomains = currentDomainList.filter(item => !uniqueDomainList.includes(item));
 
-        console.log(`New domains detected for ${domain}:`, newDomains);
-        console.log(`Removed domains detected for ${domain}:`, removedDomains);
-
+        logger.info({ newDomains, domain }, `New domains detected for ${domain}`);
+        logger.info({ removedDomains, domain }, `Removed domains detected for ${domain}`);
 
         // If there are new or removed domains, update the database and feed
         if (newDomains.length > 0 || removedDomains.length > 0 || !currentDataExists) {
              // We update if there are changes OR if there was no valid data previously
-            console.log(`Changes detected or no previous data for ${domain}. Updating DB and Feed.`);
+            logger.info(`Changes detected or no previous data for ${domain}. Updating DB and Feed.`);
             try {
                 await updateMiscData(`domainFinder_${domain}`, JSON.stringify(uniqueDomainList));
-                console.log(`Successfully updated data in DB for ${domain}.`);
+                logger.info(`Successfully updated data in DB for ${domain}.`);
 
                 const feedDetails = [];
                 if (newDomains.length > 0) {
@@ -170,7 +169,6 @@ export default async function domainFinderController() {
                       feedDetails.push(`No previous data, saving current list.`);
                  }
 
-
                 const feedData = {
                     type: `domainFinder`,
                     details: feedDetails.join('\n'), // Join details with newline
@@ -178,15 +176,15 @@ export default async function domainFinderController() {
                     date: new Date().toUTCString(),
                 };
                 await updateFeed(feedData);
-                console.log(`Successfully updated feed for ${domain}. Feed details:`, feedData.details);
+                logger.info({ domain, details: feedData.details }, `Successfully updated feed for ${domain}.`);
 
             } catch (updateError) {
-                 console.error(`Error updating DB or Feed for ${domain}:`, updateError);
+                 logger.error({ err: updateError, domain }, `Error updating DB or Feed for ${domain}`);
             }
         } else {
-            console.log(`No changes detected for ${domain}. No update needed.`);
+            logger.info(`No changes detected for ${domain}. No update needed.`);
         }
     }
-    console.log('Domain Finder Controller Finished');
+    logger.info('Domain Finder Controller Finished');
     return 'Domain Finder Controller Finished';
 }

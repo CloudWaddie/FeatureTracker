@@ -1,6 +1,7 @@
 import { createReadStream } from "fs";
 import { join } from "path";
 import sqlite3 from 'sqlite3'; // Import sqlite3 from node-sqlite3
+import logger from "@/lib/logger";
 
 // Helper function to open the database with a Promise
 function openDatabase(filename) {
@@ -8,7 +9,7 @@ function openDatabase(filename) {
         // Use sqlite3.Database directly
         const db = new sqlite3.Database(filename, (err) => {
             if (err) {
-                console.error('Error opening database', err);
+                logger.error('Error opening database', err);
                 reject(err);
             } else {
                 resolve(db);
@@ -24,7 +25,7 @@ function execCommand(db, sql) {
     return new Promise((resolve, reject) => {
         db.exec(sql, (err) => {
             if (err) {
-                console.error('Error executing command', sql, err);
+                logger.error('Error executing command', sql, err);
                 reject(err);
             } else {
                 resolve();
@@ -38,7 +39,7 @@ function getRow(db, sql) {
     return new Promise((resolve, reject) => {
         db.get(sql, (err, row) => {
             if (err) {
-                console.error('Error getting row', sql, err);
+                logger.error('Error getting row', sql, err);
                 reject(err);
             } else {
                 resolve(row);
@@ -53,10 +54,10 @@ function closeDatabase(db) {
     return new Promise((resolve, reject) => {
         db.close((err) => {
             if (err) {
-                console.error('Error closing database', err);
+                logger.error('Error closing database', err);
                 reject(err);
             } else {
-                console.log("Database connection closed.");
+                logger.info("Database connection closed.");
                 resolve();
             }
         });
@@ -69,29 +70,29 @@ export async function GET(request) {
     let db = null; // Variable to hold the database connection
 
     try {
-        console.log(`Attempting to open database at: ${dbPath}`);
+        logger.info(`Attempting to open database at: ${dbPath}`);
         // Open the database connection using the Promise helper
         db = await openDatabase(dbPath);
-        console.log("Database opened successfully.");
+        logger.info("Database opened successfully.");
 
         // Check if the database is in WAL mode (optional but good practice)
         const journalModeResult = await getRow(db, 'PRAGMA journal_mode;');
-        console.log(`Current journal mode: ${journalModeResult.journal_mode}`);
+        logger.info(`Current journal mode: ${journalModeResult.journal_mode}`);
 
        if (journalModeResult.journal_mode !== 'wal') {
-            console.warn("Database is not in WAL mode. Changing to WAL...");
+            logger.warn("Database is not in WAL mode. Changing to WAL...");
             try {
                 await execCommand(db, 'PRAGMA journal_mode=WAL;');
-                console.log("Journal mode set to WAL.");
+                logger.info("Journal mode set to WAL.");
             } catch (walError) {
-                console.error("Failed to set WAL mode:", walError);
+                logger.error("Failed to set WAL mode:", walError);
             } finally {
                 try {
                     await closeDatabase(db);
                     db = null;
                     db = await openDatabase(dbPath);
                 } catch (reopenError) {
-                    console.error("Failed to close and reopen database:", reopenError);
+                    logger.error("Failed to close and reopen database:", reopenError);
                     // Handle the error appropriately, possibly by rejecting the entire operation
                     throw reopenError; // Re-throw to ensure the outer catch block handles it
                 }
@@ -101,9 +102,9 @@ export async function GET(request) {
 
         // Manually trigger a full WAL checkpoint using the Promise helper
         // This merges the WAL file into the main DB file
-        console.log("Triggering WAL checkpoint...");
+        logger.info("Triggering WAL checkpoint...");
         await execCommand(db, 'PRAGMA wal_checkpoint(full);');
-        console.log("WAL checkpoint triggered successfully.");
+        logger.info("WAL checkpoint triggered successfully.");
 
         // Close the database connection before reading the file
         // Use the closeDatabase Promise helper
@@ -111,7 +112,7 @@ export async function GET(request) {
         db = null; // Set to null to indicate the connection is closed
 
 
-        console.log(`Creating read stream for database file: ${dbPath}`);
+        logger.info(`Creating read stream for database file: ${dbPath}`);
         // Now, read the main database file (which is now updated by the checkpoint)
         const fileStream = createReadStream(dbPath);
 
@@ -123,7 +124,7 @@ export async function GET(request) {
         });
 
     } catch (error) {
-        console.error("Error processing database or downloading file:", error, { dbPath });
+        logger.error("Error processing database or downloading file:", error, { dbPath });
 
         // Ensure the database connection is closed if it was opened
         if (db) {
@@ -131,7 +132,7 @@ export async function GET(request) {
                 // Use the closeDatabase Promise helper in error handling
                 await closeDatabase(db);
             } catch (closeError) {
-                console.error("Error closing database connection after initial error:", closeError);
+                logger.error("Error closing database connection after initial error:", closeError);
             }
         }
 

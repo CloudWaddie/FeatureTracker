@@ -1,4 +1,5 @@
 import { getMiscData, updateMiscData, updateFeed } from "../../../db.js";
+import logger from '../../../../lib/logger.js';
 
 export default async function geminiDatesController() {
     try {
@@ -23,9 +24,9 @@ export default async function geminiDatesController() {
 
         const previousDatesRaw = await getMiscData("geminiDates");
         if (!previousDatesRaw || previousDatesRaw.length === 0) {
-            console.log("No previous dates found in misc data.");
+            logger.info("No previous dates found in misc data.");
             await updateMiscData("geminiDates", JSON.stringify(dates.map(date => date.replace(/\./g, "-"))));
-            console.log("Successfully updated Gemini dates in misc data.");
+            logger.info("Successfully updated Gemini dates in misc data.");
             return;
         }
         const previousDatesToCompare = JSON.parse(Array.isArray(previousDatesRaw) && previousDatesRaw[0]?.value ? previousDatesRaw[0].value : '[]');
@@ -40,14 +41,14 @@ export default async function geminiDatesController() {
         const formatedDetails = `Added date(s): ${additions.join(', ')}, Removed date(s): ${deletions.join(', ')}`;
 
         if (additions.length === 0 && deletions.length === 0) {
-            console.log("No changes detected in the dates.");
+            logger.info("No changes detected in the dates.");
             return;
         }
 
-        console.log("Changes detected!");
+        logger.info("Changes detected!");
 
         await updateMiscData("geminiDates", JSON.stringify(currentDatesToCompare));
-        console.log("Successfully updated Gemini dates in misc data.");
+        logger.info("Successfully updated Gemini dates in misc data.");
 
         // Update feed - type, details, appId, date
         const dataToUpdate = {
@@ -56,10 +57,10 @@ export default async function geminiDatesController() {
             appId: 'Gemini Web App',
         }
         await updateFeed(dataToUpdate);
-        console.log("Feed updated successfully with the new or removed dates.");
+        logger.info("Feed updated successfully with the new or removed dates.");
 
     } catch (error) {
-      console.error("Error fetching or processing dates:", error);
+      logger.error({ err: error }, "Error fetching or processing dates");
     }
     return "Gemini dates controller is running...";
 }

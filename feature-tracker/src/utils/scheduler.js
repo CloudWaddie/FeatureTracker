@@ -1,23 +1,26 @@
 import cron from 'node-cron';
 import runAllTasks from './tasks/controller.js'; // Import the function to run all tasks
+import logger from '../lib/logger.js'; // Import the logger
+import { cwd } from 'process'; // Import cwd to get the current working directory
+import path from 'path'; // Import path to handle file paths
+import fs from 'fs'; // Import fs to handle file system operations
 
 let taskRunning = false;
-const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 const runMyScheduledTask = async () => {
   if (taskRunning) {
-    console.log('Scheduled task is already running, skipping.');
+    logger.info('Scheduled task is already running, skipping.');
     return;
   }
   taskRunning = true;
-  console.log('Running scheduled task...');
+  logger.info('Running scheduled task...');
   try {
-    console.log('Performing the scheduled task...');
+    logger.info('Performing the scheduled task...');
     // Simulate a task that takes some time to complete
-    console.log(await runAllTasks()); // Call the function to run all tasks
-    console.log('Scheduled task finished successfully.');
+    logger.info(await runAllTasks()); // Call the function to run all tasks
+    logger.info('Scheduled task finished successfully.');
   } catch (error) {
-    console.error('Error during scheduled task:', error);
+    logger.error({ err: error }, 'Error during scheduled task');
   } finally {
     taskRunning = false;
   }
@@ -29,18 +32,31 @@ let schedulerStarted = false; // Flag to ensure scheduler only starts once
 
 const startScheduler = () => {
   if (schedulerStarted) {
-    console.log('Scheduler already started.');
+    logger.info('Scheduler already started.');
     return;
   }
 
-  console.log('Attempting to start scheduler...');
+  logger.info('Attempting to start scheduler...');
   cron.schedule('*/30 * * * *', () => {
-    console.log('Triggering scheduled task via cron...');
+    logger.info('Triggering scheduled task via cron...');
     runMyScheduledTask();
   });
 
   schedulerStarted = true;
-  console.log('Scheduler successfully started.');
+  logger.info('Scheduler successfully started.');
 };
+
+// Clear the logs file every 24 hours
+cron.schedule('0 0 * * *', () => {
+  logger.info('Clearing logs file...');
+  const logFilePath = path.join(cwd(), 'logs', 'app.log');
+  if (fs.existsSync(logFilePath)) {
+    fs.writeFileSync(logFilePath, '', 'utf8'); // Clear the log file
+    logger.info('Logs file cleared successfully.');
+  } else {
+    logger.warn('Logs file does not exist, skipping clear operation.');
+  }
+}
+);
 
 export default startScheduler;

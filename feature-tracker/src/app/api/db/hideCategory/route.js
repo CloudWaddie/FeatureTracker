@@ -1,6 +1,7 @@
 import { hideFeedByCategory } from "@/utils/db";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import logger from "@/lib/logger";
 
 export async function POST(req) {
     const session = await auth();
@@ -20,7 +21,7 @@ export async function POST(req) {
         await hideFeedByCategory(category, hide);
         return NextResponse.json({ message: `Category ${hide ? "hidden" : "shown"} successfully` }, { status: 200 });
     } catch (error) {
-        console.error(`Error ${hide ? "hiding" : "showing"} feed category:`, error);
+        logger.error(`Error ${hide ? "hiding" : "showing"} feed category:`, error);
         if (error instanceof SyntaxError) { // Handle cases where req.json() fails
             return NextResponse.json({ message: "Invalid JSON in request body" }, { status: 400 });
         }

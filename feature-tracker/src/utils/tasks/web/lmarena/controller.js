@@ -1,5 +1,6 @@
 import { chromium } from 'playwright'
 import { updateModels, compareModels, updateFeed } from '../../../db.js'
+import logger from '../../../../lib/logger.js';
 
 export default async function lmarenaController() {
     let browser;
@@ -21,7 +22,7 @@ export default async function lmarenaController() {
 
         const modelRegex = /{modelApiId:".+?".+?provider:".+?".+?}/g;
         const models = bodyString.match(modelRegex) || [];
-        console.log("Models found:", models);
+        logger.info({ modelsCount: models.length }, "Models found");
 
         let jsonArrayString = `[${models.join(',')}]`;
         jsonArrayString = jsonArrayString.replace(/([a-zA-Z0-9_]+):/g, '"$1":');
@@ -33,17 +34,17 @@ export default async function lmarenaController() {
             const compareresponse = await compareModels(jsObject);
             // Check if compareresponse is not empty
             if (!compareresponse || (compareresponse.additions.length === 0 && compareresponse.deletions.length === 0)) {
-                console.log("No changes detected in the models.");
+                logger.info("No changes detected in the models.");
                 return;
             }
             // If there are changes, update the models in the database
-            console.log("Response from compareModels:", compareresponse);
+            logger.info({ compareresponse }, "Response from compareModels");
             await updateModels(jsObject);
             // Format details string for the feed - Added models, removed models using the id from the response
             const addedModels = compareresponse.additions.map(model => model.id).join(', ');
             const removedModels = compareresponse.deletions.map(model => model.id).join(', ');
             const formatedDetails = `Added models: ${addedModels} Removed models: ${removedModels}`;
-            console.log("Formatted details for feed:", formatedDetails);
+            logger.info({ formatedDetails }, "Formatted details for feed");
             // Update feed - type, details, appId, date
             const dataToUpdate = {
                 type: 'models',
@@ -51,15 +52,15 @@ export default async function lmarenaController() {
                 appId: 'lmarena',
             }
             await updateFeed(dataToUpdate);
-            console.log("Feed updated successfully with the new or removed models.");
+            logger.info("Feed updated successfully with the new or removed models.");
 
         } catch (error) {
-            console.error("Error parsing the string:", error);
+            logger.error({ err: error }, "Error parsing the string");
         }
           
 
     } catch (error) {
-        console.error('An error occurred in the task route:', error);
+        logger.error({ err: error }, 'An error occurred in the lmarenaController task route');
     } finally {
         if (browser) {
             await browser.close();
