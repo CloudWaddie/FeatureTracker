@@ -2,12 +2,13 @@
 
 import { useSession } from "next-auth/react";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input"; 
 import { signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { Check, ChevronsUpDown } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, logClientError } from "@/lib/utils";
 import { typeDisplayNameMap } from "../consts";
 import {
   Table,
@@ -26,12 +27,12 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@/components/ui/command"
+} from "@/components/ui/command";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
+} from "@/components/ui/popover";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,7 +43,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
 
 export default function Page() {
   const { data: session, status } = useSession();
@@ -78,7 +79,7 @@ export default function Page() {
       );
       toast.success(`Successfully ${newIsHidden === 1 ? 'hidden' : 'shown'} item with ID ${id}.`);
     } catch (error) {
-      console.error(`Failed to update item visibility for id: ${id}`, error);
+      logClientError('error', `Failed to update item visibility for id: ${id} in control-panel`, { error: error.message, stack: error.stack, id });
       toast.error(`Error: ${error.message}`);
     }
   };
@@ -91,7 +92,7 @@ export default function Page() {
         const data = await res.json();
         setTables(data);
       } catch (error) {
-        console.error(error);
+        logClientError('error', 'Failed to fetch tables in control-panel', { error: error.message, stack: error.stack });
         setTables([]);
       }
     };
@@ -104,7 +105,7 @@ export default function Page() {
         const numPages = parseInt(textData, 10);
         setTotalPages(isNaN(numPages) ? 1 : numPages);
       } catch (error) {
-        console.error(error);
+        logClientError('error', 'Failed to fetch total pages in control-panel', { error: error.message, stack: error.stack });
         setTotalPages(1);
       }
     };
@@ -117,7 +118,7 @@ export default function Page() {
         const data = await res.json();
         setFeedData(data);
       } catch (error) {
-        console.error(error);
+        logClientError('error', 'Failed to fetch feed data in control-panel', { error: error.message, stack: error.stack, page: currentPage });
         setFeedData(null);
       } finally {
         setLoadingFeed(false);
@@ -145,7 +146,7 @@ export default function Page() {
       const infoData = await infoRes.json();
       setTableInfo(infoData);
     } catch (error) {
-      console.error(error);
+      logClientError('error', `Failed to fetch table info for ${tableName} in control-panel`, { error: error.message, stack: error.stack, tableName });
       setTableInfo(null);
     } finally {
       setLoadingTableInfo(false);
@@ -158,7 +159,7 @@ export default function Page() {
       const data = await dataRes.json();
       setTableData(data);
     } catch (error) {
-      console.error(error);
+      logClientError('error', `Failed to fetch data for table ${tableName} in control-panel`, { error: error.message, stack: error.stack, tableName });
       setTableData(null);
     } finally {
       setLoadingTableData(false);
@@ -223,7 +224,7 @@ export default function Page() {
       });
       setEditingCell(null);
     } catch (error) {
-      console.error('Failed to save edit:', error);
+      logClientError('error', 'Failed to save edit in control-panel', { error: error.message, stack: error.stack, editingCell });
       toast.error(`Error saving: ${error.message}`);
       // Optionally revert to originalValue or keep editing
     }
@@ -329,7 +330,7 @@ export default function Page() {
                       setDialogOpen(false); // Close dialog on success
                       // Optionally, refresh data or update UI
                     } catch (error) {
-                      console.error(`Failed to ${isHidingCategory ? "hide" : "show"} category: ${selectedCategory}`, error);
+                      logClientError('error', `Failed to ${isHidingCategory ? "hide" : "show"} category: ${selectedCategory} in control-panel`, { error: error.message, stack: error.stack, selectedCategory, isHidingCategory });
                       toast.error(`Error: ${error.message}`);
                     }
                   } else {
@@ -342,6 +343,9 @@ export default function Page() {
           {/* Buttons to trigger the dialog */}
           <Button variant="outline" onClick={() => { setIsHidingCategory(true); setDialogOpen(true); }}>Hide Category</Button>
           <Button variant="outline" onClick={() => { setIsHidingCategory(false); setDialogOpen(true); }}>Show Category</Button>
+          <Link href="/logs-viewer">
+            <Button variant="outline">View Logs</Button>
+          </Link>
           <Button onClick={() => signOut()}>Sign out</Button>
         </div>
       </div>

@@ -2,6 +2,7 @@ import RSS from 'rss';
 import { getFeed } from "@/utils/db";
 import { NextResponse } from "next/server";
 import { typeDisplayNameMap } from '@/app/consts';
+import logger from "@/lib/logger";
 
 export async function GET(request) {
   try {
@@ -45,7 +46,7 @@ export async function GET(request) {
     });
 
   } catch (error) {
-    console.error("Error generating RSS feed:", error);
+    logger.error("Error generating RSS feed:", error);
     return new NextResponse("Error generating RSS feed", { status: 500 });
   }
 }

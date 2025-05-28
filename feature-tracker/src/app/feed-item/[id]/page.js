@@ -33,7 +33,6 @@ function FeedItemDetailContent() {
       setFeedItem(data);
       setError(null);
     } catch (err) {
-      console.error("Fetching feed item failed:", err);
       setError(err.message);
       setFeedItem(null);
     } finally {

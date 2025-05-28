@@ -47,7 +47,6 @@ export default function StringsViewerPage() {
                 // Assuming data is an array of objects like { appId: "..." }
                 setApps(data.map(item => item.appId));
             } catch (error) {
-                console.error("Failed to fetch apps:", error);
                 setFetchError("Failed to load app list. Please try again later.");
             }
         };
@@ -67,7 +66,6 @@ export default function StringsViewerPage() {
                     const data = await response.text(); // Assuming the API returns XML as text
                     setXmlData(data);
                 } catch (error) {
-                    console.error("Failed to fetch strings:", error);
                     setXmlData(''); // Clear data on error
                     setFetchError(`Failed to fetch strings for ${selectedAppId}. This might mean the app does not have a strings file.`);
                 }
@@ -112,7 +110,6 @@ export default function StringsViewerPage() {
                                         onSelect={() => {
                                             setSelectedAppId(appId); // Store selected appId
                                             setPopoverOpen(false);
-                                            console.log("Selected app ID:", appId);
                                         }}
                                     >
                                         {appId} {/* Display appId */}

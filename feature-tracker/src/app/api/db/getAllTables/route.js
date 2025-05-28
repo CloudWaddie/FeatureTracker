@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAllTables } from '@/utils/db';
 import { auth } from "@/auth";
+import logger from '@/lib/logger';
 
 export async function GET(request) {
   const session = await auth();
@@ -12,7 +13,7 @@ export async function GET(request) {
     const tables = await getAllTables();
     return NextResponse.json(tables);
   } catch (error) {
-    console.error('Error fetching all tables:', error);
+    logger.error('Error fetching all tables:', error);
     return NextResponse.json({ error: 'Failed to fetch tables' }, { status: 500 });
   }
 }

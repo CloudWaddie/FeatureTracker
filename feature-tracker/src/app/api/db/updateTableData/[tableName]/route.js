@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { updateTableData } from '@/utils/db';
 import { auth } from "@/auth";
+import logger from '@/lib/logger';
 
 export async function POST(request, context) {
   const session = await auth();
@@ -24,7 +25,7 @@ export async function POST(request, context) {
     const changes = await updateTableData(tableName, rowId, column, value);
     return NextResponse.json({ message: `Table ${tableName} updated successfully`, changes });
   } catch (error) {
-    console.error(`Error updating table data for ${tableName}:`, error);
+    logger.error(`Error updating table data for ${tableName}:`, error);
     if (error instanceof SyntaxError) { // Handle cases where req.json() fails
         return NextResponse.json({ message: "Invalid JSON in request body" }, { status: 400 });
     }

@@ -1,6 +1,7 @@
 import { hideFeedItem } from "@/utils/db";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import logger from "@/lib/logger";
 
 export async function POST(req) {
     const session = await auth();
@@ -17,7 +18,7 @@ export async function POST(req) {
         await hideFeedItem(id, isHidden);
         return NextResponse.json({ message: `Item ${isHidden ? 'hidden' : 'shown'} successfully` }, { status: 200 });
     } catch (error) {
-        console.error("Error hiding feed item:", error);
+        logger.error("Error hiding feed item:", error);
         if (error instanceof SyntaxError) { // Handle cases where req.json() fails
             return NextResponse.json({ message: "Invalid JSON in request body" }, { status: 400 });
         }

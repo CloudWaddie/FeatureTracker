@@ -30,7 +30,6 @@ export default function ModelChecker() {
                 setAllFetchedModels(sortedData);
                 setModels(sortedData); // Initialize displayed models
             } catch (error) {
-                console.error('Error fetching initial models:', error);
                 setAllFetchedModels([]);
                 setModels([]);
             }

@@ -2,6 +2,7 @@ import Parser from "rss-parser";
 import fs from "fs";
 import { cwd } from "process";
 import { updateFeed, updateOldFeeds, updateNewFeeds, clearNewFeedsByURL, clearOldFeedsByURL, findAdditionsFeeds, findDeletionsFeeds } from '../../../../utils/db.js';
+import logger from '../../../../lib/logger.js';
 
 export default async function feedController() {
     const configPath = `${cwd()}/src/utils/tasks/web/feeds/config.txt`;
@@ -20,7 +21,7 @@ export default async function feedController() {
         if (trimmedLine.startsWith('http')) {
             feedURLS.push(trimmedLine);
         } else {
-            console.warn(`URL "${trimmedLine}" is not (likely to be) a valid URL in ${configPath}. Ignoring.`);
+            logger.warn(`URL "${trimmedLine}" is not (likely to be) a valid URL in ${configPath}. Ignoring.`);
         }
     }
     // Ensure feedURLS are unique
@@ -44,13 +45,13 @@ export default async function feedController() {
                 });
                 feedItems = Array.from(uniqueItemsMap.values());
             }
-            console.log(`Fetched and deduplicated feed from ${url}. Original count: ${parsedFeed.items ? parsedFeed.items.length : 0}, Unique count: ${feedItems.length}`);
+            logger.info(`Fetched and deduplicated feed from ${url}. Original count: ${parsedFeed.items ? parsedFeed.items.length : 0}, Unique count: ${feedItems.length}`);
         } catch (error) {
-            console.error(`Error fetching feed from ${url}:`, error);
+            logger.error({ err: error, url }, `Error fetching feed from ${url}`);
             continue;
         }
         if (!feedItems || feedItems.length === 0) {
-            console.error(`No items found or processed in the feed from ${url}`);
+            logger.error({ url }, `No items found or processed in the feed from ${url}`);
             continue;
         }
         // Construct a feed object compatible with downstream functions
@@ -65,7 +66,7 @@ export default async function feedController() {
         await clearOldFeedsByURL(feedLink);
         await updateOldFeeds(feedDataForDB);
         if (additions.length === 0 && deletions.length === 0) {
-            console.log(`No changes detected for ${url}`);
+            logger.info(`No changes detected for ${url}`);
             continue;
         }
         else {
@@ -79,11 +80,11 @@ export default async function feedController() {
             try {
                 await updateFeed(dataToAddToFeed);
             } catch (error) {
-                console.error(`Error updating feed for ${url}:`, error);
+                logger.error({ err: error, url }, `Error updating feed for ${url}`);
             }
         }
     }
     // Add your feed-related tasks here
-    console.log("Feed tasks are running...");
+    logger.info("Feed tasks are running...");
     return "Feed tasks are running...";
 }

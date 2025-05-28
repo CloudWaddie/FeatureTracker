@@ -2,6 +2,7 @@ import { exec as execCallback } from 'child_process'; // Changed to exec
 import util from 'util'; // To promisify exec
 import path from 'path';
 import { promises as fs } from 'fs'; // Import fs.promises
+import logger from '../../../../lib/logger.js';
 
 const exec = util.promisify(execCallback); // Promisify exec
 
@@ -14,24 +15,22 @@ export default async function extractStrings(apkPath) {
     try {
         // Ensure the base output directory exists
         await fs.mkdir(baseOutputDir, { recursive: true });
-        console.log(`Ensured base output directory exists: ${baseOutputDir}`);
+        logger.info(`Ensured base output directory exists: ${baseOutputDir}`);
     } catch (error) {
-        console.error(`Error creating base output directory ${baseOutputDir}:`, error);
+        logger.error({ err: error, baseOutputDir }, `Error creating base output directory ${baseOutputDir}`);
         throw error; // Re-throw if directory creation fails
     }
     
     const command = `java -jar "${apktoolPath}" d -f -o "${outputDir}" --no-src --no-assets "${apkPath}"`;
-    console.log(`Executing: ${command}`);
+    logger.info(`Executing: ${command}`);
 
     try {
         const { stdout, stderr } = await exec(command);
-        if (stdout) console.log('stdout:', stdout);
-        if (stderr) console.error('stderr:', stderr); // apktool might output progress/errors to stderr
-        console.log(`APK extracted to: ${outputDir}`);
+        if (stdout) logger.info('stdout:', stdout);
+        if (stderr) logger.error('stderr:', stderr); // apktool might output progress/errors to stderr
+        logger.info(`APK extracted to: ${outputDir}`);
     } catch (error) {
-        console.error(`Failed to extract strings from APK ${apkPath}: ${error.message}`);
-        if (error.stdout) console.error(`Stdout: ${error.stdout.toString()}`);
-        if (error.stderr) console.error(`Stderr: ${error.stderr.toString()}`);
+        logger.error({ err: error, apkPath, stdout: error.stdout?.toString(), stderr: error.stderr?.toString() }, `Failed to extract strings from APK ${apkPath}`);
         throw error; // Re-throw the error to be handled by the caller
     }
     
