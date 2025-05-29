@@ -9,6 +9,8 @@ export const typeDisplayNameMap = {
     'rssFeed': 'Updated RSS feeds',
     'domainFinder': 'Updated domains',
     'geminiPreferences': 'Updated Gemini preferences',
+    'googleLabsPages': 'Updated Google Labs pages',
+    'geminiValues': 'Updated Gemini values',
   };
 
 export const FEED_ITEM_SUMMARY_LENGTH = 500;
