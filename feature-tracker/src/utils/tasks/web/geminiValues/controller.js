@@ -33,6 +33,7 @@ export default async function geminiValuesController() {
 
     } catch (e) {
         logger.error(`Error fetching the URL: ${e}`);
+        return;
     }
     const currentValues = await getMiscData("geminiValues");
     logger.info(`Fetching Gemini values from: ${url}`);
