@@ -18,13 +18,25 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: feature-tracker/package-lock.json
+          # Removed 'cache: npm' and 'cache-dependency-path'
+          # as actions/cache@v4 will handle global npm cache and .next/cache
+
+      - name: Restore cache
+        uses: actions/cache@v4
+        with:
+          # Cache '~/.npm' for npm install speed, and '.next/cache' for Next.js build speed
+          path: |
+            ~/.npm
+            ${{ github.workspace }}/feature-tracker/.next/cache # Adjusted path for your subdirectory
+          # Generate a new cache whenever package-lock.json or relevant source files change.
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('feature-tracker/package-lock.json') }}-${{ hashFiles('feature-tracker/**/*.js', 'feature-tracker/**/*.jsx', 'feature-tracker/**/*.ts', 'feature-tracker/**/*.tsx') }} # Adjusted hashFiles patterns
+          # If source files changed but packages didn't, rebuild from a prior cache.
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('feature-tracker/package-lock.json') }}-
 
       - name: Install dependencies
         run: npm install
         working-directory: ./feature-tracker
-
 
       - name: Build the project
         run: npm run build
