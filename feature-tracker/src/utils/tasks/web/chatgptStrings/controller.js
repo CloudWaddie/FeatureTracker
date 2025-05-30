@@ -63,20 +63,20 @@ export default async function chatgptStringsContoller() {
             await updateMiscData('chatgptStrings', JSON.stringify(newMiscData));
 
             // Format details string for the feed
-            let formatedDetails = '';
+            let formattedDetails = '';
             if (additions.length > 0) {
-                formatedDetails += `Added: ${additions.join(', ')}`;
+                formattedDetails += `Added: ${additions.join(', ')}`;
             }
             if (deletions.length > 0) {
-                if (formatedDetails.length > 0) formatedDetails += '; '; // Add separator if both exist
-                formatedDetails += `Removed: ${deletions.join(', ')}`;
+                if (formattedDetails.length > 0) formattedDetails += '; '; // Add separator if both exist
+                formattedDetails += `Removed: ${deletions.join(', ')}`;
             }
-            logger.info({ formatedDetails }, "Formatted details for feed");
+            logger.info({ formattedDetails }, "Formatted details for feed");
 
             // Update feed - type, details, appId, date
             const dataToUpdate = {
                 type: 'chatgptStrings',
-                details: formatedDetails,
+                details: formattedDetails,
                 appId: 'ChatGPT Web App',
             }
             await updateFeed(dataToUpdate);
