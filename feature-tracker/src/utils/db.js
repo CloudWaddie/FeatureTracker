@@ -61,14 +61,42 @@ async function getDb() {
     return initializeDbConnection();
 }
 
-export async function getFeed(page = 1, showHidden = false) {
+export async function getFeed(page = 1, showHidden = false, searchQuery = null, filterType = null) {
     const currentDb = await getDb();
     if (!currentDb) throw new Error("Database connection not available.");
     return new Promise((resolve, reject) => {
         const offset = (page - 1) * ITEMS_PER_PAGE;
-        currentDb.all("SELECT * FROM feed WHERE isHidden = ? OR isHidden = 0 ORDER BY date DESC LIMIT ? OFFSET ?", [showHidden, ITEMS_PER_PAGE, offset], (err, rows) => {
+        let query = "SELECT * FROM feed";
+        const params = [];
+        let conditions = [];
+
+        if (!showHidden) {
+            conditions.push("(isHidden = 0)");
+        } else {
+            conditions.push("(isHidden = 1 OR isHidden = 0)"); // Or simply don't add isHidden to conditions if showHidden means show all
+        }
+
+        if (filterType) {
+            conditions.push("type = ?");
+            params.push(filterType);
+        }
+
+        if (searchQuery) {
+            conditions.push("(details LIKE ? OR appId LIKE ? OR type LIKE ?)");
+            const searchTerm = `%${searchQuery}%`;
+            params.push(searchTerm, searchTerm, searchTerm);
+        }
+
+        if (conditions.length > 0) {
+            query += " WHERE " + conditions.join(" AND ");
+        }
+
+        query += " ORDER BY date DESC LIMIT ? OFFSET ?";
+        params.push(ITEMS_PER_PAGE, offset);
+
+        currentDb.all(query, params, (err, rows) => {
             if (err) {
-                logger.error({ err }, "Error fetching feed");
+                logger.error({ err, query, params }, "Error fetching feed");
                 reject(err);
             } else {
                 resolve(rows);
@@ -182,13 +210,38 @@ export async function hideFeedItem(itemId, isHidden) {
     });
 }
 
-export async function getTotalPages(showHidden) {
+export async function getTotalPages(showHidden, searchQuery = null, filterType = null) {
     const currentDb = await getDb();
     if (!currentDb) throw new Error("Database connection not available.");
     return new Promise((resolve, reject) => {
-        currentDb.get("SELECT COUNT(*) as count FROM feed WHERE isHidden = ? OR isHidden = 0", [showHidden], (err, row) => {
+        let query = "SELECT COUNT(*) as count FROM feed";
+        const params = [];
+        let conditions = [];
+
+        if (!showHidden) {
+            conditions.push("(isHidden = 0)");
+        } else {
+            conditions.push("(isHidden = 1 OR isHidden = 0)");
+        }
+
+        if (filterType) {
+            conditions.push("type = ?");
+            params.push(filterType);
+        }
+
+        if (searchQuery) {
+            conditions.push("(details LIKE ? OR appId LIKE ? OR type LIKE ?)");
+            const searchTerm = `%${searchQuery}%`;
+            params.push(searchTerm, searchTerm, searchTerm);
+        }
+
+        if (conditions.length > 0) {
+            query += " WHERE " + conditions.join(" AND ");
+        }
+
+        currentDb.get(query, params, (err, row) => {
             if (err) {
-                logger.error({ err, showHidden }, "Error fetching total item count");
+                logger.error({ err, query, params, showHidden }, "Error fetching total item count");
                 reject(err);
             } else {
                 const totalItems = row ? row.count : 0;

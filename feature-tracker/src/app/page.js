@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { typeDisplayNameMap, FEED_ITEM_SUMMARY_LENGTH } from './consts';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Autolinker } from 'autolinker';
 import DOMPurify from 'dompurify';
 import {
@@ -23,48 +25,72 @@ function PageContent() {
   const [lastChecked, setLastChecked] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const timeSince = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
-  const [currentPage, setCurrentPage] = useState(1);
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const [totalPages, setTotalPages] = useState(0);
+  const router = useRouter();
 
-  const fetchTotalPages = useCallback(async () => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedFilterType, setSelectedFilterType] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+
+  // Debounce search query
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500); // 500ms delay
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [searchQuery]);
+
+  const fetchTotalPages = useCallback(async (currentSearchQuery, currentFilterType) => {
     try {
-      const response = await fetch(`/api/getTotalPages`);
+      let apiUrl = `/api/getTotalPages?`;
+      const queryParams = new URLSearchParams();
+      if (currentSearchQuery) queryParams.append('search', currentSearchQuery);
+      if (currentFilterType) queryParams.append('filter', currentFilterType);
+      
+      apiUrl += queryParams.toString();
+
+      const response = await fetch(apiUrl);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
       setTotalPages(data);
     } catch (err) {
-      console.error("Fetching total pages failed.");
-      // Optionally set an error state for total pages if needed
+      console.error("Fetching total pages failed:", err);
     }
-  }, []); // setTotalPages is stable
-
-  useEffect(() => {
-    fetchTotalPages(); // Initial fetch
-  }, [fetchTotalPages]);
+  }, []);
 
   useEffect(() => {
     const pageFromUrl = searchParams.get('page');
-    if (pageFromUrl && !isNaN(parseInt(pageFromUrl))) {
-      const pageNumber = Math.abs(parseInt(pageFromUrl));
-      if (pageNumber !== currentPage) {
-        setCurrentPage(pageNumber);
-      }
-    } else if (currentPage !== 1) { // Reset to 1 if no valid page in URL and not already 1
-        setCurrentPage(1);
-        // Optionally update URL if page is reset, though this might cause loops if not handled carefully
-        // router.push(`/?page=1`); 
-    }
-  }, [searchParams, currentPage, setCurrentPage]);
+    const searchFromUrl = searchParams.get('search') || '';
+    const filterFromUrl = searchParams.get('filter') || '';
 
-  const fetchUpdates = useCallback(async (page = 1) => {
+    const pageNumber = pageFromUrl && !isNaN(parseInt(pageFromUrl)) ? Math.abs(parseInt(pageFromUrl)) : 1;
+    
+    if (pageNumber !== currentPage) setCurrentPage(pageNumber);
+    if (searchFromUrl !== searchQuery) setSearchQuery(searchFromUrl);
+    if (searchFromUrl !== debouncedSearchQuery) setDebouncedSearchQuery(searchFromUrl); // Initialize debounced search
+    if (filterFromUrl !== selectedFilterType) setSelectedFilterType(filterFromUrl);
+
+  }, [searchParams]); // Removed currentPage, searchQuery, selectedFilterType to avoid loops, router is stable
+
+  const fetchUpdates = useCallback(async (page, currentSearchQuery, currentFilterType) => {
+    setLoading(true);
     try {
-      setLoading(true);
-      // fetchTotalPages(); // fetchTotalPages is now called independently and on interval
-      const response = await fetch(`/api/db/getFeed?page=${page}`);
+      let apiUrl = `/api/db/getFeed?page=${page}`;
+      const queryParams = new URLSearchParams();
+      if (currentSearchQuery) queryParams.append('search', currentSearchQuery);
+      if (currentFilterType) queryParams.append('filter', currentFilterType);
+      
+      const queryString = queryParams.toString();
+      if (queryString) apiUrl += `&${queryString}`;
+
+      const response = await fetch(apiUrl);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -72,26 +98,38 @@ function PageContent() {
       setUpdates(data);
       setError(null);
     } catch (err) {
-      console.error("Fetching updates failed.");
+      console.error("Fetching updates failed:", err);
       setError(err.message);
       setUpdates(null);
     } finally {
       setLoading(false);
       setLastChecked(new Date());
     }
-  }, []);
+  }, []); // Dependencies are stable setters or primitive types passed as arguments
 
+  // Effect for fetching data when page, debouncedSearchQuery, or filter changes
   useEffect(() => {
-    fetchUpdates(currentPage);
-    // Also fetch total pages when current page changes or on interval, as it might affect pagination
-    fetchTotalPages(); 
+    fetchUpdates(currentPage, debouncedSearchQuery, selectedFilterType);
+    fetchTotalPages(debouncedSearchQuery, selectedFilterType);
 
+    // Update URL
+    const params = new URLSearchParams();
+    if (currentPage > 1) params.set('page', currentPage.toString());
+    if (debouncedSearchQuery) params.set('search', debouncedSearchQuery);
+    if (selectedFilterType) params.set('filter', selectedFilterType);
+    router.push(`?${params.toString()}`, undefined, { shallow: true });
+
+  }, [currentPage, debouncedSearchQuery, selectedFilterType, fetchUpdates, fetchTotalPages, router]);
+
+  // Polling interval
+  useEffect(() => {
     const pollingInterval = setInterval(() => {
-        fetchUpdates(currentPage);
-        fetchTotalPages(); // Keep total pages updated
+      // Fetch with current debounced search and filter
+      fetchUpdates(currentPage, debouncedSearchQuery, selectedFilterType);
+      fetchTotalPages(debouncedSearchQuery, selectedFilterType);
     }, 60000);
     return () => clearInterval(pollingInterval);
-  }, [currentPage, fetchUpdates, fetchTotalPages]);
+  }, [currentPage, debouncedSearchQuery, selectedFilterType, fetchUpdates, fetchTotalPages]); // Ensure polling uses up-to-date params
 
   useEffect(() => {
     const timerId = setInterval(() => {
@@ -106,11 +144,45 @@ function PageContent() {
 
   const secondsDiff = lastChecked ? Math.round((currentTime.getTime() - lastChecked.getTime()) / 1000) : null;
 
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  };
+
+  const handleFilterChange = (value) => {
+    setSelectedFilterType(value === 'all' ? '' : value);
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  };
+  
   return (
     <>
+      <div className="flex gap-4 mb-4 items-center">
+        <Input
+          type="text"
+          placeholder="Search..."
+          value={searchQuery}
+          onChange={handleSearchChange}
+          className="max-w-sm"
+        />
+        <Select value={selectedFilterType || 'all'} onValueChange={handleFilterChange}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Filter by type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            {Object.entries(typeDisplayNameMap).map(([key, displayName]) => (
+              <SelectItem key={key} value={key}>{displayName}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
       <p>Last refreshed: {lastChecked ? timeSince.format(-secondsDiff, "second") : 'Never'}</p>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {updates.filter(update => !update.isHidden).map((update) => {
+        {updates.filter(update => !update.isHidden).map((update) => { // Original filter for isHidden is kept client-side for now
           const typeDisplayName = typeDisplayNameMap[update.type] || update.type;
           return (
             <Card key={update.id}>
