@@ -129,7 +129,7 @@ export default async function domainFinderController() {
                     }
                 } catch (e) {
                     logger.error({ err: e, domain }, `Error parsing current data from DB for ${domain}`);
-                    // If parsing fails, currentDomainList remains [], and currentDataExists is false
+                    continue;
                 }
             } else {
                  logger.info(`No existing data found in DB for domainFinder_${domain}.`);
