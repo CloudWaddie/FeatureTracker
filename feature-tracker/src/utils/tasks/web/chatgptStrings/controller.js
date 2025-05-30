@@ -2,7 +2,7 @@ import { chromium } from 'playwright'
 import { updateMiscData, getMiscData, updateFeed } from '../../../db.js'
 import logger from '../../../../lib/logger.js';
 
-export default async function chatgptStringsContoller() {
+export default async function chatgptStringsController() {
     let browser;
     const allDefaultMessages = new Set();
 
@@ -37,7 +37,7 @@ export default async function chatgptStringsContoller() {
         });
 
         page.on('response', handleResponse);
-        await page.goto("https://chatgpt.com/", {waitUntil: 'networkidle'})
+        await page.goto("https://chatgpt.com/", {waitUntil: 'networkidle', timeout: 60000})
 
         try {
             // Now we compare from the database
