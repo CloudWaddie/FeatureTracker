@@ -38,7 +38,7 @@ export default async function geminiDatesController() {
         const additions = currentDatesToCompare.filter(date => !previousDatesToCompare.includes(date));
         const deletions = previousDatesToCompare.filter(date => !currentDatesToCompare.includes(date));
 
-        const formatedDetails = `Added date(s): ${additions.join(', ')}, Removed date(s): ${deletions.join(', ')}`;
+        const formattedDetails = `Added date(s): ${additions.join(', ')}, Removed date(s): ${deletions.join(', ')}`;
 
         if (additions.length === 0 && deletions.length === 0) {
             logger.info("No changes detected in the dates.");
@@ -53,7 +53,7 @@ export default async function geminiDatesController() {
         // Update feed - type, details, appId, date
         const dataToUpdate = {
             type: 'geminiDates',
-            details: formatedDetails,
+            details: formattedDetails,
             appId: 'Gemini Web App',
         }
         await updateFeed(dataToUpdate);
