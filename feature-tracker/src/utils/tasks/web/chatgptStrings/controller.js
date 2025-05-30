@@ -51,8 +51,11 @@ export default async function chatgptStringsController() {
                 return
             }
             const newMiscData = Array.from(allDefaultMessages);
-            const additions = newMiscData.filter(item => !parsedOldMiscData.includes(item));
-            const deletions = parsedOldMiscData.filter(item => !newMiscData.includes(item));
+            const oldDataSet = new Set(parsedOldMiscData);
+            // newMiscData is Array.from(allDefaultMessages) from line 53
+            // allDefaultMessages is a Set
+            const additions = newMiscData.filter(item => !oldDataSet.has(item));
+            const deletions = parsedOldMiscData.filter(item => !allDefaultMessages.has(item));
 
             if (additions.length === 0 && deletions.length === 0) {
                 logger.info("No changes detected in the chatgpt strings.");
