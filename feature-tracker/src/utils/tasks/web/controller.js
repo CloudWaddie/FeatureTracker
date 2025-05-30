@@ -6,6 +6,7 @@ import domainFinderController from './domainFinders/controller.js';
 import geminiValuesController from './geminiValues/controller.js';
 import googleLabsController from './googleLabs/controller.js';
 import geminiPreferencesController from './geminiPreferences/controller.js';
+import chatgptStringsController from './chatgptStrings/controller.js';
 import logger from '../../../lib/logger.js';
 
 const controllers = [
@@ -16,7 +17,8 @@ const controllers = [
     domainFinderController,
     geminiValuesController,
     googleLabsController,
-    geminiPreferencesController
+    geminiPreferencesController,
+    chatgptStringsController
 ];
 
 export default async function webController() {
