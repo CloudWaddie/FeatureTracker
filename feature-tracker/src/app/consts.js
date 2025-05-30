@@ -11,6 +11,7 @@ export const typeDisplayNameMap = {
     'geminiPreferences': 'Updated Gemini preferences',
     'googleLabsPages': 'Updated Google Labs pages',
     'geminiValues': 'Updated Gemini values',
+    'chatgptStrings': 'Updated ChatGPT strings',
   };
 
 export const FEED_ITEM_SUMMARY_LENGTH = 500;
