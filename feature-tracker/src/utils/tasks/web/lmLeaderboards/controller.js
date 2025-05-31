@@ -1,8 +1,5 @@
 import { chromium } from "playwright";
-import Table from 'terminal-table';
-import { getMiscData, updateMiscData, updateFeed } from "@/utils/db";
-import { leaderboardTypeMap } from "@/app/consts";
-import list from "app-store-scraper/lib/list";
+import { getMiscData, updateMiscData, updateFeed } from "../../../db.js";
 
 export default async function lmLeaderboardsController() {
 
@@ -52,6 +49,12 @@ export default async function lmLeaderboardsController() {
             console.error("Failed to parse JSON for " + leaderboardIdsJson[i].leaderboards[0].name + ":", e);
             leaderboard_individual_json = []; // Initialize to empty array on error to prevent further issues
         }
+
+        // Sort the leaderboard data by rank
+        if (leaderboard_individual_json && leaderboard_individual_json.length > 0) {
+            leaderboard_individual_json.sort((a, b) => a.rank - b.rank);
+        }
+
         let currentLeaderboardData = await getMiscData(`leaderboard_${leaderboardIdsJson[i].leaderboards[0].name}`);
         currentLeaderboardData = currentLeaderboardData[0]
         if (!currentLeaderboardData || !currentLeaderboardData.value) {
@@ -83,9 +86,32 @@ export default async function lmLeaderboardsController() {
         }
         // There are changes, so we want to update the leaderboard data
         await updateMiscData(`leaderboard_${leaderboardIdsJson[i].leaderboards[0].name}`, JSON.stringify(leaderboard_individual_json));
+        // Make a HTML table with the leaderboard data, styled to be cleaner
+        let table = `<table style="width: 100%; border-collapse: collapse; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; font-size: 0.875rem;">`;
+        table += `<thead>`;
+        table += `<tr style="border-bottom: 1px solid #e2e8f0;">`; // e.g., Tailwind gray-200
+        table += `<th style="padding: 0.75rem 1rem; text-align: left; font-weight: 600; color: #ffffff; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em;">Rank</th>`; // White text
+        table += `<th style="padding: 0.75rem 1rem; text-align: left; font-weight: 600; color: #ffffff; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em;">Model Name</th>`; // White text
+        table += `</tr>`;
+        table += `</thead>`;
+        table += `<tbody>`;
+        if (leaderboard_individual_json && leaderboard_individual_json.length > 0) {
+            for (let j = 0; j < leaderboard_individual_json.length; j++) {
+                // Apply border-bottom to all data rows.
+                table += `<tr style="border-bottom: 1px solid #e2e8f0;">`; // e.g., Tailwind gray-200
+                table += `<td style="padding: 0.75rem 1rem; text-align: left; color: #ffffff;">${leaderboard_individual_json[j].rank}</td>`; // White text
+                table += `<td style="padding: 0.75rem 1rem; text-align: left; color: #ffffff;">${leaderboard_individual_json[j].modelName}</td>`; // White text
+                table += `</tr>`;
+            }
+        } else {
+            table += `<tr><td colspan="2" style="padding: 0.75rem 1rem; text-align: center; color: #ffffff; border-bottom: 1px solid #e2e8f0;">No data available.</td></tr>`; // White text
+        }
+        table += `</tbody>`;
+        table += `</table>`;
+        // Update the feed with the new leaderboard data
         const detailsToUpdateFeed = {
             type: 'leaderboard',
-            details: 'New leaderboard data for ' + leaderboardTypeMap[leaderboardIdsJson[i].leaderboards[0].name],
+            details: 'New leaderboard data for ' + leaderboardIdsJson[i].leaderboards[0].name + `\n` + table,
             appId: 'lmarena'
         }
         await updateFeed(detailsToUpdateFeed);
