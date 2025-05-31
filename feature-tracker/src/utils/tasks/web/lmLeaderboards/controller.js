@@ -18,7 +18,7 @@ export default async function lmLeaderboardsController() {
     const leaderboardIdsWithoutSlashesAndBrackets = leaderboardIdsWithoutSlashes.map((item) => item + '}]}');
     const leaderboardIdsJson = leaderboardIdsWithoutSlashesAndBrackets.map((item) => JSON.parse(item));
     await page.close();
-    browser.close();
+    await browser.close();
 
     let leaderboard_individual;
     let leaderboard_individual_without_slashes;
