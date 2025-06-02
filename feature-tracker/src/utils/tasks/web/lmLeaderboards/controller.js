@@ -56,7 +56,7 @@ export default async function lmLeaderboardsController() {
         const leaderboard_individual_regex = new RegExp(leaderboard_individual_regex_string, 'g');
 
         leaderboard_individual = body.match(leaderboard_individual_regex) || [];
-        console.log('Found ' + leaderboard_individual.length + ' items for ' + leaderboardIdsJson[i].leaderboards[0].name);
+        logger.info('Found ' + leaderboard_individual.length + ' items for ' + leaderboardIdsJson[i].leaderboards[0].name);
         
         leaderboard_individual_without_slashes = leaderboard_individual.map((item) => item.replace(/\\/g, ''));
         // Parse the JSON
