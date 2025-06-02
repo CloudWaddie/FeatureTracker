@@ -1,5 +1,7 @@
 import updateDB from "./updateDB.js";
 import fs from "fs";
+import { promises as fsPromises } from 'fs'; // Renamed to avoid conflict, using promises API
+import path from 'path'; // Added path import
 import { cwd } from "process";
 
 // --- Import your new store-specific functions ---
@@ -46,6 +48,33 @@ export default async function appVersionController() {
     // --- End of parsing logic ---
 
     logger.info({ appListsByStore }, "Parsed app lists by store");
+
+    // Clear APK directory before processing apps
+    const apkFilesDir = path.resolve(cwd(), 'apk-files');
+    logger.info("Preparing APK directory:", apkFilesDir);
+    try {
+        // Check if directory exists
+        await fsPromises.access(apkFilesDir);
+        logger.info("Directory exists, deleting old APK files...");
+        const files = await fsPromises.readdir(apkFilesDir);
+        for (const file of files) {
+            const filePath = path.join(apkFilesDir, file);
+            try {
+                await fsPromises.rm(filePath, { recursive: true, force: true });
+                logger.info("Deleted:", filePath);
+            } catch (err) {
+                logger.error({ err, filePath }, `Error deleting ${filePath}`);
+            }
+        }
+    } catch (error) {
+        if (error.code === 'ENOENT') {
+            logger.info("Creating directory:", apkFilesDir);
+            await fsPromises.mkdir(apkFilesDir, { recursive: true });
+        } else {
+            logger.error({ err: error, apkFilesDir }, "Error accessing or preparing APK directory");
+            throw error; 
+        }
+    }
 
     // --- Modified looping logic ---
     for (const store in appListsByStore) {

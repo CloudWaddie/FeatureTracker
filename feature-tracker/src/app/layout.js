@@ -128,9 +128,9 @@ export default function RootLayout({ children }) {
                           </NavigationMenuLink>
                         </li>
                         <li>
-                          <NavigationMenuLink asChild className={`${navigationMenuTriggerStyle()} opacity-50 pointer-events-none`}>
-                            <Link href="#" aria-disabled="true">
-                              Leaderboard Viewer (coming soon)
+                          <NavigationMenuLink asChild className={`${navigationMenuTriggerStyle()}`}>
+                            <Link href="/leaderboard-viewer">
+                              Leaderboard Viewer
                             </Link>
                           </NavigationMenuLink>
                         </li>
