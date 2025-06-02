@@ -1,5 +1,6 @@
 import { chromium } from "playwright";
 import { getMiscData, updateMiscData, updateFeed } from "../../../db.js";
+import logger from "../../../../lib/logger.js";
 
 export default async function lmLeaderboardsController() {
     let browser;
