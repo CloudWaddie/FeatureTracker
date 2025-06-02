@@ -2,23 +2,40 @@ import { chromium } from "playwright";
 import { getMiscData, updateMiscData, updateFeed } from "../../../db.js";
 
 export default async function lmLeaderboardsController() {
+    let browser;
+    let page;
+    let body;
 
-    const browser = await chromium.launch();
-    const page = await browser.newPage();
-    await page.setExtraHTTPHeaders({
-        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36',
-        'Accept-Language': 'en-US,en;q=0.9'
-    });
-    await page.goto('https://lmarena.ai/leaderboard');
-    const body = await page.content();
+    try {
+        browser = await chromium.launch();
+        page = await browser.newPage();
+        await page.setExtraHTTPHeaders({
+            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36',
+            'Accept-Language': 'en-US,en;q=0.9'
+        });
+        await page.goto('https://lmarena.ai/leaderboard');
+        body = await page.content();
 
-    const leaderboardIdRegex = /{\\["']leaderboards\\["']:\[{\\["']id\\["']:\\".+?\\["'],\\["']name\\["']:\\["'].+?\\["']/g;
-    const leaderboardIds = body.match(leaderboardIdRegex) || [];
-    const leaderboardIdsWithoutSlashes = leaderboardIds.map((item) => item.replace(/\\/g, ''));
-    const leaderboardIdsWithoutSlashesAndBrackets = leaderboardIdsWithoutSlashes.map((item) => item + '}]}');
-    const leaderboardIdsJson = leaderboardIdsWithoutSlashesAndBrackets.map((item) => JSON.parse(item));
-    await page.close();
-    await browser.close();
+        const leaderboardIdRegex = /{\\["']leaderboards\\["']:\[{\\["']id\\["']:\\".+?\\["'],\\["']name\\["']:\\["'].+?\\["']/g;
+        const leaderboardIds = body.match(leaderboardIdRegex) || [];
+        const leaderboardIdsWithoutSlashes = leaderboardIds.map((item) => item.replace(/\\/g, ''));
+        const leaderboardIdsWithoutSlashesAndBrackets = leaderboardIdsWithoutSlashes.map((item) => item + '}]}');
+        const leaderboardIdsJson = leaderboardIdsWithoutSlashesAndBrackets.map((item) => JSON.parse(item));
+        await page.close(); // Close page before browser
+    } finally {
+        if (browser) {
+            await browser.close();
+        }
+    }
+
+    // If body is undefined here, it means an error occurred before page.content()
+    // We should handle this gracefully, perhaps by returning or logging an error.
+    // For now, we'll assume the rest of the logic depends on 'body' and might need adjustment
+    // if 'body' can be undefined. The original request was about ensuring browser.close().
+    if (!body) {
+        console.error("Failed to retrieve page content. Aborting lmLeaderboardsController.");
+        return;
+    }
 
     let leaderboard_individual;
     let leaderboard_individual_without_slashes;
