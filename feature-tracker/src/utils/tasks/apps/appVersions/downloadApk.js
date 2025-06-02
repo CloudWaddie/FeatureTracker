@@ -15,33 +15,6 @@ export default async function downloadApk(appId) {
   let source = 'google-play';
 
   try {
-    logger.info("Preparing APK directory:", apkFilesDir);
-    try {
-      // Check if directory exists
-      await fs.access(apkFilesDir);
-      logger.info("Directory exists, deleting old APK files...");
-      const files = await fs.readdir(apkFilesDir);
-      for (const file of files) {
-        const filePath = path.join(apkFilesDir, file);
-        try {
-          await fs.rm(filePath, { recursive: true, force: true });
-          logger.info("Deleted:", filePath);
-        } catch (err) {
-          logger.error({ err, filePath }, `Error deleting ${filePath}`);
-          // Decide if this error is critical enough to stop
-        }
-      }
-    } catch (error) {
-      // If directory doesn't exist (ENOENT) or other access error
-      if (error.code === 'ENOENT') {
-        logger.info("Creating directory:", apkFilesDir);
-        await fs.mkdir(apkFilesDir, { recursive: true });
-      } else {
-        logger.error({ err: error, apkFilesDir }, "Error accessing or preparing APK directory");
-        throw error; // Re-throw if it's not a simple "not found" error
-      }
-    }
-
     logger.info(`Executing apkeep for: ${appId}`);
     const apkeepProcess = spawn(apkeepPath, [
       '--accept-tos',

@@ -2,3 +2,4 @@ chatgpt.com
 openai.com
 anthropic.com
 claude.ai
+deepseek.com
