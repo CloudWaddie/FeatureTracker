@@ -1,10 +1,12 @@
 import { chromium } from "playwright";
 import { getMiscData, updateMiscData, updateFeed } from "../../../db.js";
+import logger from "../../../../lib/logger.js";
 
 export default async function lmLeaderboardsController() {
     let browser;
     let page;
     let body;
+    let leaderboardIdsJson = []; // Initialize leaderboardIdsJson
 
     try {
         browser = await chromium.launch();
@@ -20,7 +22,7 @@ export default async function lmLeaderboardsController() {
         const leaderboardIds = body.match(leaderboardIdRegex) || [];
         const leaderboardIdsWithoutSlashes = leaderboardIds.map((item) => item.replace(/\\/g, ''));
         const leaderboardIdsWithoutSlashesAndBrackets = leaderboardIdsWithoutSlashes.map((item) => item + '}]}');
-        const leaderboardIdsJson = leaderboardIdsWithoutSlashesAndBrackets.map((item) => JSON.parse(item));
+        leaderboardIdsJson = leaderboardIdsWithoutSlashesAndBrackets.map((item) => JSON.parse(item)); // Assign to the outer scope variable
         await page.close(); // Close page before browser
     } finally {
         if (browser) {
