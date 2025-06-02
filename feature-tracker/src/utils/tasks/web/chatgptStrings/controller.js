@@ -87,7 +87,7 @@ export default async function chatgptStringsController() {
             // If no changes, log and return
             if (additions.length === 0 && deletions.length === 0) {
                 logger.info("No changes detected in the chatgpt strings.");
-                return "chatgptStringsController task completed successfully."; // Return success message
+                return { status: "success", message: "chatgptStringsController task completed successfully." }; // Return success message
             }
 
             // Update the database with the new strings

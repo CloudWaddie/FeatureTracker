@@ -6,7 +6,10 @@ export async function GET(request) {
   const leaderboardName = searchParams.get('leaderboardName');
 
   if (!leaderboardName) {
-    return new Response("Missing 'leaderboardName' parameter", { status: 400 });
+    return NextResponse.json(
+      { error: "Missing 'leaderboardName' parameter" },
+      { status: 400 }
+    );
   }
 
   try {
