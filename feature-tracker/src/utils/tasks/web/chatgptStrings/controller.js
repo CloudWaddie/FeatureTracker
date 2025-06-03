@@ -115,6 +115,7 @@ export default async function chatgptStringsController() {
 
         } catch (error) {
             logger.error({ err: error }, "Error during update process");
+            return;
         }
 
     } catch (error) {
