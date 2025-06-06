@@ -127,5 +127,5 @@ export default async function perplexityStringsController() {
             await browser.close();
         }
     }
-    return "perplexityStringsController task completed successfully.";
+    return { status: "success", message: "perplexityStringsController task completed successfully." };
 }

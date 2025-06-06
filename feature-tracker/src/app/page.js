@@ -18,6 +18,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { CardSkeleton } from "@/components/ui/card-skeleton";
 
 function PageContent() {
   const [updates, setUpdates] = useState(null);
@@ -177,12 +178,6 @@ function PageContent() {
     };
   }, [currentSessionHighestId]);
 
-  if (loading && !updates) return <p>Loading updates...</p>;
-  if (error) return <p>Error loading updates: {error}</p>;
-  if (!updates) return <p>No updates available.</p>;
-
-  const secondsDiff = lastChecked ? Math.round((currentTime.getTime() - lastChecked.getTime()) / 1000) : null;
-
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
     if (currentPage !== 1) {
@@ -196,7 +191,45 @@ function PageContent() {
       setCurrentPage(1);
     }
   };
-  
+
+  if (loading && !updates) {
+    return (
+      <>
+        <div className="flex gap-4 mb-4 items-center">
+          <Input
+            type="text"
+            placeholder="Search..."
+            value={searchQuery}
+            onChange={handleSearchChange}
+            className="max-w-sm"
+            disabled
+          />
+          <Select value={selectedFilterType || 'all'} onValueChange={handleFilterChange} disabled>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filter by type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              {Object.entries(typeDisplayNameMap).map(([key, displayName]) => (
+                <SelectItem key={key} value={key}>{displayName}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <p>Loading updates...</p>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <CardSkeleton key={index} />
+          ))}
+        </div>
+      </>
+    );
+  }
+  if (error) return <p>Error loading updates: {error}</p>;
+  if (!updates) return <p>No updates available.</p>;
+
+  const secondsDiff = lastChecked ? Math.round((currentTime.getTime() - lastChecked.getTime()) / 1000) : null;
+
   return (
     <>
       <div className="flex gap-4 mb-4 items-center">
@@ -221,100 +254,106 @@ function PageContent() {
       </div>
       <p>Last refreshed: {lastChecked ? timeSince.format(-secondsDiff, "second") : 'Never'}</p>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {updates.filter(update => !update.isHidden).map((update) => { // Original filter for isHidden is kept client-side for now
-          const typeDisplayName = typeDisplayNameMap[update.type] || update.type;
-          // Show badge if: no stored value (first time) OR item ID is higher than stored value
-          const isNewItem = lastSeenHighestId === null || update.id > lastSeenHighestId;
-          return (
-            <Card key={update.id}>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <Link href={`/feed-item/${update.id}`} passHref>
-                    <CardTitle className="cursor-pointer hover:underline">{typeDisplayName}</CardTitle>
-                  </Link>
-                  {isNewItem && (
-                    <Badge variant="default" className="ml-2">
-                      New
-                    </Badge>
-                  )}
-                </div>
-                <CardDescription>{update.appId}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {update.type === 'strings' ? (() => {
-                  const details = update.details;
-                  const lines = details.split('\n');
-                  let contentToShow = [];
-                  let needsTruncationLink = false;
-                  const isLong = details.length > FEED_ITEM_SUMMARY_LENGTH;
+        {loading ? (
+          Array.from({ length: 6 }).map((_, index) => (
+            <CardSkeleton key={`loading-${index}`} />
+          ))
+        ) : (
+          updates.filter(update => !update.isHidden).map((update) => { // Original filter for isHidden is kept client-side for now
+            const typeDisplayName = typeDisplayNameMap[update.type] || update.type;
+            // Show badge if: no stored value (first time) OR item ID is higher than stored value
+            const isNewItem = lastSeenHighestId === null || update.id > lastSeenHighestId;
+            return (
+              <Card key={update.id}>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <Link href={`/feed-item/${update.id}`} passHref>
+                      <CardTitle className="cursor-pointer hover:underline">{typeDisplayName}</CardTitle>
+                    </Link>
+                    {isNewItem && (
+                      <Badge variant="default" className="ml-2">
+                        New
+                      </Badge>
+                    )}
+                  </div>
+                  <CardDescription>{update.appId}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {update.type === 'strings' ? (() => {
+                    const details = update.details;
+                    const lines = details.split('\n');
+                    let contentToShow = [];
+                    let needsTruncationLink = false;
+                    const isLong = details.length > FEED_ITEM_SUMMARY_LENGTH;
 
-                  if (isLong) {
-                    needsTruncationLink = true;
-                    let accumulatedChars = 0;
-                    for (let i = 0; i < lines.length; i++) {
-                      const line = lines[i];
-                      const lineLengthWithPotentialNewline = line.length + (i < lines.length - 1 ? 1 : 0);
+                    if (isLong) {
+                      needsTruncationLink = true;
+                      let accumulatedChars = 0;
+                      for (let i = 0; i < lines.length; i++) {
+                        const line = lines[i];
+                        const lineLengthWithPotentialNewline = line.length + (i < lines.length - 1 ? 1 : 0);
 
-                      if (accumulatedChars + lineLengthWithPotentialNewline <= FEED_ITEM_SUMMARY_LENGTH) {
-                        contentToShow.push(line);
-                        accumulatedChars += lineLengthWithPotentialNewline;
-                      } else {
-                        const remainingChars = FEED_ITEM_SUMMARY_LENGTH - accumulatedChars;
-                        if (remainingChars > 0) {
-                          contentToShow.push(line.substring(0, remainingChars) + "...");
-                        } else if (contentToShow.length > 0 && !contentToShow[contentToShow.length - 1].endsWith("...")) {
-                           contentToShow[contentToShow.length - 1] = contentToShow[contentToShow.length - 1] + "...";
-                        } else if (contentToShow.length === 0) { 
-                            contentToShow.push(line.substring(0, FEED_ITEM_SUMMARY_LENGTH) + "...");
+                        if (accumulatedChars + lineLengthWithPotentialNewline <= FEED_ITEM_SUMMARY_LENGTH) {
+                          contentToShow.push(line);
+                          accumulatedChars += lineLengthWithPotentialNewline;
+                        } else {
+                          const remainingChars = FEED_ITEM_SUMMARY_LENGTH - accumulatedChars;
+                          if (remainingChars > 0) {
+                            contentToShow.push(line.substring(0, remainingChars) + "...");
+                          } else if (contentToShow.length > 0 && !contentToShow[contentToShow.length - 1].endsWith("...")) {
+                             contentToShow[contentToShow.length - 1] = contentToShow[contentToShow.length - 1] + "...";
+                          } else if (contentToShow.length === 0) { 
+                              contentToShow.push(line.substring(0, FEED_ITEM_SUMMARY_LENGTH) + "...");
+                          }
+                          break;
                         }
-                        break;
                       }
+                    } else {
+                      contentToShow = lines;
                     }
-                  } else {
-                    contentToShow = lines;
-                  }
 
-                  return (
-                    <>
-                      {contentToShow.map((lineContent, idx) => {
-                        const originalLineForStyle = lines[idx] || "";
-                        let style = {};
-                        if (originalLineForStyle.startsWith('+')) style.color = 'green';
-                        else if (originalLineForStyle.startsWith('-')) style.color = 'red';
-                        const linkedContent = Autolinker.link(lineContent, {
-                          newWindow: true,
-                          className: 'text-blue-500 hover:underline',
-                          truncate: { length: 50, location: 'smart' }
-                        });
-                        return <div key={idx} style={style} className="break-words whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(linkedContent) }} />;
-                      })}
-                      {needsTruncationLink && (
+                    return (
+                      <>
+                        {contentToShow.map((lineContent, idx) => {
+                          const originalLineForStyle = lines[idx] || "";
+                          let style = {};
+                          if (originalLineForStyle.startsWith('+')) style.color = 'green';
+                          else if (originalLineForStyle.startsWith('-')) style.color = 'red';
+                          const linkedContent = Autolinker.link(lineContent, {
+                            newWindow: true,
+                            className: 'text-blue-500 hover:underline',
+                            truncate: { length: 50, location: 'smart' }
+                          });
+                          return <div key={idx} style={style} className="break-words whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(linkedContent) }} />;
+                        })}
+                        {needsTruncationLink && (
+                          <Link href={`/feed-item/${update.id}`} passHref>
+                            <span className="text-gray-500 hover:underline cursor-pointer">Show more...</span>
+                          </Link>
+                        )}
+                      </>
+                    );
+                  })() : (
+                    // Original logic for non-'strings' type
+                    update.details.length > FEED_ITEM_SUMMARY_LENGTH ? (
+                      <>
+                        <div className="break-words whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(Autolinker.link(update.details.substring(0, FEED_ITEM_SUMMARY_LENGTH) + "...", { newWindow: true, className: 'text-blue-500 hover:underline', truncate: { length: 50, location: 'smart' }})) }} />
                         <Link href={`/feed-item/${update.id}`} passHref>
                           <span className="text-gray-500 hover:underline cursor-pointer">Show more...</span>
                         </Link>
-                      )}
-                    </>
-                  );
-                })() : (
-                  // Original logic for non-'strings' type
-                  update.details.length > FEED_ITEM_SUMMARY_LENGTH ? (
-                    <>
-                      <div className="break-words whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(Autolinker.link(update.details.substring(0, FEED_ITEM_SUMMARY_LENGTH) + "...", { newWindow: true, className: 'text-blue-500 hover:underline', truncate: { length: 50, location: 'smart' }})) }} />
-                      <Link href={`/feed-item/${update.id}`} passHref>
-                        <span className="text-gray-500 hover:underline cursor-pointer">Show more...</span>
-                      </Link>
-                    </>
-                  ) : (
-                    <div className="break-words whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(Autolinker.link(update.details, { newWindow: true, className: 'text-blue-500 hover:underline', truncate: { length: 50, location: 'smart' }})) }} />
-                  )
-                )}
-              </CardContent>
-              <CardFooter>
-                <p className='text-muted-foreground text-sm'>{new Date(update.date).toLocaleString()}</p>
-              </CardFooter>
-            </Card> 
-          );
-        })}
+                      </>
+                    ) : (
+                      <div className="break-words whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(Autolinker.link(update.details, { newWindow: true, className: 'text-blue-500 hover:underline', truncate: { length: 50, location: 'smart' }})) }} />
+                    )
+                  )}
+                </CardContent>
+                <CardFooter>
+                  <p className='text-muted-foreground text-sm'>{new Date(update.date).toLocaleString()}</p>
+                </CardFooter>
+              </Card> 
+            );
+          })
+        )}
       </div>
       <div className="flex justify-center space-x-4 mt-4">
         <Button
@@ -343,7 +382,13 @@ function PageContent() {
 
 export default function Page() {
   return (
-    <Suspense fallback={<p>Loading page information...</p>}>
+    <Suspense fallback={
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, index) => (
+          <CardSkeleton key={index} />
+        ))}
+      </div>
+    }>
       <PageContent />
     </Suspense>
   );
