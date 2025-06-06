@@ -321,6 +321,8 @@ export async function updateOldSitemaps(sites) {
         return Promise.resolve();
     }
 
+    // Use INSERT OR IGNORE to merge new entries into the persistent historical store
+    // This ensures the oldSitemaps table becomes cumulative rather than being overwritten
     return Promise.all(
         sites.sites.map(site => {
             return new Promise((resolve, reject) => {
@@ -328,7 +330,8 @@ export async function updateOldSitemaps(sites) {
                     logger.warn({ site }, "Skipping invalid old sitemap entry in updateOldSitemaps");
                     return resolve(); // Resolve to not break Promise.all for one bad entry
                 }
-                currentDb.run("INSERT INTO oldSitemaps (siteURL, url, lastUpdated) VALUES (?, ?, ?)", [sites.url, site.loc, site.lastmod], function(err) {
+                // Use INSERT OR IGNORE to avoid duplicates while maintaining cumulative storage
+                currentDb.run("INSERT OR IGNORE INTO oldSitemaps (siteURL, url, lastUpdated) VALUES (?, ?, ?)", [sites.url, site.loc, site.lastmod], function(err) {
                     if (err) {
                         logger.error({ err, siteURL: sites.url, siteLoc: site.loc }, "Error updating old sitemaps entry");
                         reject(err);
@@ -673,6 +676,8 @@ export async function updateOldFeeds(feeds) {
         return Promise.resolve();
     }
 
+    // Use INSERT OR IGNORE to merge new entries into the persistent historical store
+    // This ensures the oldFeeds table becomes cumulative rather than being overwritten
     return Promise.all(
         feeds.items.map(item => {
             return new Promise((resolve, reject) => {
@@ -685,7 +690,8 @@ export async function updateOldFeeds(feeds) {
                     logger.warn({ item, pubDate: item.pubDate }, "Skipping old feed item with invalid pubDate in updateOldFeeds");
                     return resolve();
                 }
-                currentDb.run("INSERT INTO oldFeeds (siteURL, url, lastUpdated) VALUES (?, ?, ?)", [feeds.link, item.link, pubDateTimestamp], function(err) {
+                // Use INSERT OR IGNORE to avoid duplicates while maintaining cumulative storage
+                currentDb.run("INSERT OR IGNORE INTO oldFeeds (siteURL, url, lastUpdated) VALUES (?, ?, ?)", [feeds.link, item.link, pubDateTimestamp], function(err) {
                     if (err) {
                         logger.error({ err, siteURL: feeds.link, itemLink: item.link }, "Error updating old feeds entry");
                         reject(err);
