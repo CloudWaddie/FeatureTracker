@@ -9,6 +9,7 @@ import geminiPreferencesController from './geminiPreferences/controller.js';
 import chatgptStringsController from './chatgptStrings/controller.js';
 import lmLeaderboardsController from './lmLeaderboards/controller.js';
 import perplexityStringsController from './perplexityStrings/controller.js';
+import claudeStringsController from './claudeStrings/controller.js';
 import logger from '../../../lib/logger.js';
 
 const controllers = [
@@ -22,7 +23,8 @@ const controllers = [
     geminiPreferencesController,
     chatgptStringsController,
     lmLeaderboardsController,
-    perplexityStringsController
+    perplexityStringsController,
+    claudeStringsController
 ];
 
 export default async function webController() {
