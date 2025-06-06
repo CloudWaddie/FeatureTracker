@@ -61,24 +61,31 @@ export default async function feedController() {
         };
         await clearNewFeedsByURL(feedLink);
         await updateNewFeeds(feedDataForDB);
+        // findAdditionsFeeds should compare against a persistent historical list
         const additions = await findAdditionsFeeds(feedLink);
-        const deletions = await findDeletionsFeeds(feedLink);
-        await clearOldFeedsByURL(feedLink);
+        // Deletions are no longer tracked or reported.
+        // clearOldFeedsByURL is removed as the 'old' feeds table becomes the persistent historical store.
+        // updateOldFeeds should merge current items into the persistent historical list
         await updateOldFeeds(feedDataForDB);
-        if (additions.length === 0 && deletions.length === 0) {
-            logger.info(`No changes detected for ${url}`);
+
+        if (additions.length === 0) {
+            logger.info(`No new feed items detected for ${url}`);
             continue;
         }
         else {
-            const readableAdditions = additions.map(item => item.url || item.link || item.title).join(', ');
-            const readableDeletions = deletions.map(item => item.url || item.link || item.title).join(', ');
+            const readableAdditions = additions.map(item => item.url || item.link || item.title).join('; '); // Using semicolon for better readability if titles have commas
+            // Feed details will only contain additions.
+            // Similar to sitemaps, assuming findAdditionsFeeds handles "new" on first scan correctly.
+            let feedDetailString = `New feed items: ${readableAdditions}`;
+
             const dataToAddToFeed = {
                 type: 'rssFeed',
-                details: `Additions: ${readableAdditions}, Deletions: ${readableDeletions}`,
+                details: feedDetailString,
                 appId: feedLink,
             };
             try {
                 await updateFeed(dataToAddToFeed);
+                logger.info({ feedLink, details: feedDetailString }, `Successfully updated feed for ${feedLink}`);
             } catch (error) {
                 logger.error({ err: error, url }, `Error updating feed for ${url}`);
             }

@@ -80,28 +80,24 @@ export default async function chatgptStringsController() {
             const newMiscData = Array.from(allDefaultMessages);
             const oldDataSet = new Set(parsedOldMiscData);
 
-            // Calculate additions and deletions by comparing new and old data sets
+            // Calculate only additions by comparing new data against old data
             const additions = newMiscData.filter(item => !oldDataSet.has(item));
-            const deletions = parsedOldMiscData.filter(item => !allDefaultMessages.has(item));
+            // Deletions are no longer tracked or reported
 
-            // If no changes, log and return
-            if (additions.length === 0 && deletions.length === 0) {
-                logger.info("No changes detected in the chatgpt strings.");
+            // If no new additions, log and return
+            if (additions.length === 0) {
+                logger.info("No new chatgpt strings detected.");
                 return { status: "success", message: "chatgptStringsController task completed successfully." }; // Return success message
             }
 
-            // Update the database with the new strings
-            await updateMiscData('chatgptStrings', JSON.stringify(newMiscData));
+            // Merge new strings with existing ones to maintain cumulative storage
+            const allEverSeenStrings = [...new Set([...parsedOldMiscData, ...newMiscData])];
+            
+            // Update the database with the cumulative list of all strings ever seen
+            await updateMiscData('chatgptStrings', JSON.stringify(allEverSeenStrings));
 
-            // Format details string for the feed
-            let formattedDetails = '';
-            if (additions.length > 0) {
-                formattedDetails += `Added: ${additions.join(', ')}`;
-            }
-            if (deletions.length > 0) {
-                if (formattedDetails.length > 0) formattedDetails += '; '; // Add separator if both exist
-                formattedDetails += `Removed: ${deletions.join(', ')}`;
-            }
+            // Format details string for the feed (additions only)
+            const formattedDetails = `New ChatGPT strings: ${additions.join('; ')}`;
             logger.info({ formattedDetails }, "Formatted details for feed");
 
             // Update feed - type, details, appId, date
@@ -111,7 +107,7 @@ export default async function chatgptStringsController() {
                 appId: 'ChatGPT Web App', // Your app ID for the feed
             };
             await updateFeed(dataToUpdate);
-            logger.info("Feed updated successfully with the new or removed chatgpt strings.");
+            logger.info("Feed updated successfully with new chatgpt strings.");
 
         } catch (error) {
             logger.error({ err: error }, "Error during update process");
