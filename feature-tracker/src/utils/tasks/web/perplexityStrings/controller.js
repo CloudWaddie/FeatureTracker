@@ -116,6 +116,7 @@ export default async function perplexityStringsController() {
 
     } catch (error) {
         logger.error({ err: error }, 'An error occurred in the perplexityStringsController task route');
+        return { status: "error", message: "An error occurred in the perplexityStringsController task route", errorDetails: error.message };
     } finally {
         // Ensure the browser is closed even if errors occur
         if (browser) {
