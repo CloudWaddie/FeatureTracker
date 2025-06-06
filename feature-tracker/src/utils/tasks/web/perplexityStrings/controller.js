@@ -55,7 +55,7 @@ export default async function perplexityStringsController() {
         page.on('response', handleResponse);
 
         // Navigate to perplexity and wait for network to be idle
-        await page.goto("https://perplexity.ai/", { waitUntil: 'networkidle', timeout: 60000 });
+        await page.goto("https://www.perplexity.ai/", { waitUntil: 'networkidle', timeout: 60000 });
 
         // Wait for all response processing promises to resolve
         // This ensures all JS files are processed before proceeding
