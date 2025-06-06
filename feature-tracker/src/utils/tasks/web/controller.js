@@ -1,3 +1,4 @@
+import logger from '../../../lib/logger.js';
 import sitemapController from './sitemaps/controller.js';
 import lmarenaController from './lmarena/controller.js';
 import geminiDatesController from './geminiDates/controller.js';
@@ -10,7 +11,7 @@ import chatgptStringsController from './chatgptStrings/controller.js';
 import lmLeaderboardsController from './lmLeaderboards/controller.js';
 import perplexityStringsController from './perplexityStrings/controller.js';
 import claudeStringsController from './claudeStrings/controller.js';
-import logger from '../../../lib/logger.js';
+import claudeInternalStringsController from './claudeInternalStrings/controller.js';
 
 const controllers = [
     sitemapController,
@@ -24,7 +25,8 @@ const controllers = [
     chatgptStringsController,
     lmLeaderboardsController,
     perplexityStringsController,
-    claudeStringsController
+    claudeStringsController,
+    claudeInternalStringsController
 ];
 
 export default async function webController() {
