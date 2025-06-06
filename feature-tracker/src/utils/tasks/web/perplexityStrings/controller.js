@@ -73,7 +73,7 @@ export default async function perplexityStringsController() {
                 parsedOldMiscData = (oldMiscData && oldMiscData.length !== 0) ? JSON.parse(oldMiscData) : [];
             } catch (error) {
                 logger.error({ err: error }, "Error parsing old misc data for perplexity strings");
-                return; // Exit if old data cannot be parsed
+                return { status: "error", message: "Error parsing old misc data for perplexity strings", errorDetails: error.message };
             }
 
             // Convert the new set of messages to an array
