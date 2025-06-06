@@ -13,6 +13,7 @@ export const typeDisplayNameMap = {
     'geminiValues': 'Updated Gemini values',
     'chatgptStrings': 'Updated ChatGPT strings',
     'leaderboard': 'Updated leaderboards',
+    'perplexityStrings': 'Updated Perplexity strings',
   };
 
 export const FEED_ITEM_SUMMARY_LENGTH = 500;

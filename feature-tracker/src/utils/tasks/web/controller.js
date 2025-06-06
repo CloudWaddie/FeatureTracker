@@ -8,6 +8,7 @@ import googleLabsController from './googleLabs/controller.js';
 import geminiPreferencesController from './geminiPreferences/controller.js';
 import chatgptStringsController from './chatgptStrings/controller.js';
 import lmLeaderboardsController from './lmLeaderboards/controller.js';
+import perplexityStringsController from './perplexityStrings/controller.js';
 import logger from '../../../lib/logger.js';
 
 const controllers = [
@@ -20,7 +21,8 @@ const controllers = [
     googleLabsController,
     geminiPreferencesController,
     chatgptStringsController,
-    lmLeaderboardsController
+    lmLeaderboardsController,
+    perplexityStringsController
 ];
 
 export default async function webController() {
