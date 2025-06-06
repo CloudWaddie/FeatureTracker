@@ -35,6 +35,7 @@ function PageContent() {
   const [selectedFilterType, setSelectedFilterType] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [lastSeenHighestId, setLastSeenHighestId] = useState(null);
+  const [currentSessionHighestId, setCurrentSessionHighestId] = useState(null);
 
   // Debounce search query
   useEffect(() => {
@@ -148,22 +149,33 @@ function PageContent() {
     }
   }, []);
 
-  // Update last seen highest ID when updates are loaded
+  // Track current session's highest ID (don't persist to localStorage yet)
   useEffect(() => {
     if (updates && updates.length > 0) {
       const highestCurrentId = Math.max(...updates.map(update => update.id));
-      
-      if (lastSeenHighestId === null) {
-        // First time - initialize to highest current ID
-        setLastSeenHighestId(highestCurrentId);
-        localStorage.setItem('lastSeenHighestFeedId', highestCurrentId.toString());
-      } else if (highestCurrentId > lastSeenHighestId) {
-        // Update to new highest ID
-        setLastSeenHighestId(highestCurrentId);
-        localStorage.setItem('lastSeenHighestFeedId', highestCurrentId.toString());
-      }
+      setCurrentSessionHighestId(prev => prev === null ? highestCurrentId : Math.max(prev, highestCurrentId));
     }
-  }, [updates, lastSeenHighestId]);
+  }, [updates]);
+
+  // Handle page unload - update localStorage with session's highest ID
+  useEffect(() => {
+    const updateLastSeenOnUnload = () => {
+      if (currentSessionHighestId !== null) {
+        localStorage.setItem('lastSeenHighestFeedId', currentSessionHighestId.toString());
+      }
+    };
+
+    // Add event listeners for various page leave scenarios
+    window.addEventListener('beforeunload', updateLastSeenOnUnload);
+    window.addEventListener('pagehide', updateLastSeenOnUnload);
+
+    // Cleanup function - also save when component unmounts
+    return () => {
+      updateLastSeenOnUnload();
+      window.removeEventListener('beforeunload', updateLastSeenOnUnload);
+      window.removeEventListener('pagehide', updateLastSeenOnUnload);
+    };
+  }, [currentSessionHighestId]);
 
   if (loading && !updates) return <p>Loading updates...</p>;
   if (error) return <p>Error loading updates: {error}</p>;
