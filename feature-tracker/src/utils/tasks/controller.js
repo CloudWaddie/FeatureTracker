@@ -2,7 +2,7 @@ import appController from "./apps/controller.js";
 import webController from "./web/controller.js";
 import logger from '../../lib/logger.js';
 
-const controllers = [appController/*, webController*/];
+const controllers = [appController, webController];
 
 export default async function runAllTasks() {
     logger.info("Starting all tasks...");
