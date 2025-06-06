@@ -2,6 +2,7 @@ import sqlite3 from "sqlite3";
 import path from "path";
 import process from "process";
 import logger from '../lib/logger.js'; // Added logger import
+import { GoogleGenAI } from "@google/genai";
 
 const projectRoot = process.cwd(); // Get the current working directory
 const dbDir = path.join(projectRoot, "db");
@@ -272,10 +273,30 @@ export async function getLastUpdated(appId) {
 }
 
 export async function updateFeed(data) {
+    // We need to generate a summary of what changed using the Gemini API
+    let summary = "";
+    const genAI = new GoogleGenAI({apiKey: process.env.GEMINI_API_KEY});
+    if (!genAI) {
+        summary = "No summary available. Gemini API error.";
+        logger.error("Gemini API client not initialized. Summary generation skipped.");
+    }
+    else {
+        try {
+            const response = await genAI.models.generateContent({
+                model: "gemini-2.0-flash",
+                contents: `Generate a concise summary of the following feed update. You should tell the user what changed, based on the provided information: ${JSON.stringify(data)}`,
+            });
+            summary = response.text || "No summary generated.";
+        } catch (error) {
+            logger.error({ error, data }, "Error generating summary with Gemini API");
+            summary = "No summary available. Gemini API error. " + (error.message || "Unknown error");
+        }
+    }
+    data.summary = summary; // Add the generated summary to the data object
     const currentDb = await getDb();
     if (!currentDb) throw new Error("Database connection not available.");
     return new Promise((resolve, reject) => {
-        currentDb.run("INSERT INTO feed (type, details, appId, date) VALUES (?, ?, ?, ?)", [data.type, data.details, data.appId, Date.now()], function(err) {
+        currentDb.run("INSERT INTO feed (type, details, appId, date, summary) VALUES (?, ?, ?, ?, ?)", [data.type, data.details, data.appId, Date.now(), data.summary], function(err) {
             if (err) {
                 logger.error({ err, data }, "Error updating feed");
                 reject(err);
