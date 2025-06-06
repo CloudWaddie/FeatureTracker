@@ -55,7 +55,7 @@ export default async function claudeStringsController() {
         page.on('response', handleResponse);
 
         // Navigate to claude and wait for network to be idle
-        await page.goto("https://claude.ai/", { waitUntil: 'networkidle', timeout: 60000 });
+        await page.goto("https://claude.ai/new", { waitUntil: 'networkidle', timeout: 60000 });
 
         // Wait for all response processing promises to resolve
         // This ensures all JS files are processed before proceeding
