@@ -28,7 +28,7 @@ export async function GET(request) {
       
       feed.item({
         title: itemTitle,
-        description: update.details,
+        description: update.summary || `Details: ${update.details}`,
         url: `${siteUrl}/#update-${update.id}`,
         guid: update.id.toString(),
         date: new Date(update.date).toISOString(),
