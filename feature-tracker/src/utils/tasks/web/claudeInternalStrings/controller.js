@@ -2,7 +2,7 @@ import { chromium } from 'playwright';
 import { updateMiscData, getMiscData, updateFeed } from '../../../db.js';
 import logger from '../../../../lib/logger.js';
 
-export default async function claudeStringsController() {
+export default async function claudeInternalStringsController() {
     let browser;
     const allDefaultMessages = new Set();
     // Array to hold promises for response text processing
@@ -56,7 +56,7 @@ export default async function claudeStringsController() {
 
         // Navigate to claude and wait for network to be idle
         try {
-            await page.goto("https://claude.ai/new", { waitUntil: 'load', timeout: 60000 });
+            await page.goto("https://staging.claude.ai/new", { waitUntil: 'load', timeout: 60000 });
         } catch (timeoutError) {
             logger.warn(`Navigation timeout occurred, continuing with collected data: ${timeoutError.message}`);
         }
@@ -67,7 +67,7 @@ export default async function claudeStringsController() {
 
         try {
             // Retrieve old data from the database
-            const oldMiscDataRecords = await getMiscData('claudeStrings');
+            const oldMiscDataRecords = await getMiscData('claudeInternalStrings');
             // Ensure oldMiscDataRecords is not empty and get the first record's value
             const oldMiscData = oldMiscDataRecords.length > 0 ? oldMiscDataRecords[0].value : '[]';
             let parsedOldMiscData;
@@ -91,14 +91,14 @@ export default async function claudeStringsController() {
             // If no new additions, log and return
             if (additions.length === 0) {
                 logger.info("No new claude strings detected.");
-                return { status: "success", message: "claudeStringsController task completed successfully." }; // Return success message
+                return { status: "success", message: "claudeInternalStringsController task completed successfully." }; // Return success message
             }
 
             // Merge new strings with existing ones to maintain cumulative storage
             const allEverSeenStrings = [...new Set([...parsedOldMiscData, ...newMiscData])];
             
             // Update the database with the cumulative list of all strings ever seen
-            await updateMiscData('claudeStrings', JSON.stringify(allEverSeenStrings));
+            await updateMiscData('claudeInternalStrings', JSON.stringify(allEverSeenStrings));
 
             // Format details string for the feed (additions only)
             const formattedDetails = `New claude strings: ${additions.join('; ')}`;
@@ -108,7 +108,7 @@ export default async function claudeStringsController() {
             const dataToUpdate = {
                 type: 'claudeStrings',
                 details: formattedDetails,
-                appId: 'Public Claude Web App',
+                appId: 'Internal Claude Web App',
             };
             await updateFeed(dataToUpdate);
             logger.info("Feed updated successfully with new claude strings.");
@@ -119,12 +119,12 @@ export default async function claudeStringsController() {
         }
 
     } catch (error) {
-        logger.error({ err: error }, 'An error occurred in the claudeStringsController task route');
+        logger.error({ err: error }, 'An error occurred in the claudeInternalStringsController task route');
     } finally {
         // Ensure the browser is closed even if errors occur
         if (browser) {
             await browser.close();
         }
     }
-    return "claudeStringsController task completed successfully.";
+    return "claudeInternalStringsController task completed successfully.";
 }
