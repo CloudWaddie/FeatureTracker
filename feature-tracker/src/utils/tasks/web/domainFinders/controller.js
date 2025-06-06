@@ -164,10 +164,7 @@ export default async function domainFinderController() {
                 } else if (newDomains.length > 0) {
                     // For subsequent scans, only report new domains
                     feedDetails.push(`New domains: ${newDomains.join(', ')}`);
-                } else if (!currentDataExists && uniqueDomainList.length > 0) {
-                    // First run, uniqueDomainList has items, but newDomains is empty (meaning all items in uniqueDomainList were already in an empty currentDomainList - logically for first scan, newDomains should equal uniqueDomainList)
-                    // This case implies initial population where currentDomainList was empty.
-                     feedDetails.push(`Initial scan found: ${uniqueDomainList.join(', ')}`);
+                
                 }
                 // No "Removed domains" section for feedDetails
 
