@@ -127,5 +127,5 @@ export default async function claudeInternalStringsController() {
             await browser.close();
         }
     }
-    return "claudeInternalStringsController task completed successfully.";
+    return { status: "success", message: "claudeInternalStringsController task completed successfully." };
 }
