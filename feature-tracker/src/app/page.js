@@ -192,39 +192,6 @@ function PageContent() {
     }
   };
 
-  if (loading && !updates) {
-    return (
-      <>
-        <div className="flex gap-4 mb-4 items-center">
-          <Input
-            type="text"
-            placeholder="Search..."
-            value={searchQuery}
-            onChange={handleSearchChange}
-            className="max-w-sm"
-            disabled
-          />
-          <Select value={selectedFilterType || 'all'} onValueChange={handleFilterChange} disabled>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filter by type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              {Object.entries(typeDisplayNameMap).map(([key, displayName]) => (
-                <SelectItem key={key} value={key}>{displayName}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <p>Loading updates...</p>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, index) => (
-            <CardSkeleton key={index} />
-          ))}
-        </div>
-      </>
-    );
-  }
   if (error) return <p>Error loading updates: {error}</p>;
   if (!updates) return <p>No updates available.</p>;
 
