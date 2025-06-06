@@ -61,11 +61,9 @@ export default async function feedController() {
         };
         await clearNewFeedsByURL(feedLink);
         await updateNewFeeds(feedDataForDB);
-        // findAdditionsFeeds should compare against a persistent historical list
+        // findAdditionsFeeds compares against the persistent historical list
         const additions = await findAdditionsFeeds(feedLink);
-        // Deletions are no longer tracked or reported.
-        // clearOldFeedsByURL is removed as the 'old' feeds table becomes the persistent historical store.
-        // updateOldFeeds should merge current items into the persistent historical list
+        // updateOldFeeds now uses INSERT OR IGNORE for cumulative storage
         await updateOldFeeds(feedDataForDB);
 
         if (additions.length === 0) {

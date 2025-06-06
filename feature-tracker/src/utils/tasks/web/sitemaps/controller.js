@@ -77,12 +77,9 @@ export default async function sitemapController() {
         // 2. Store current scan's results into temporary storage
         await updateNewSitemaps({ sites: sites, url: actualSitemapUrl });
         // 3. Find additions by comparing temporary storage with persistent historical storage
-        //    (findAdditionsSitemaps in db.js would need to be adapted for this logic)
         const additions = await findAdditionsSitemaps(actualSitemapUrl);
-        // Deletions are no longer tracked or reported.
-        // clearOldSitemapsByURL is removed as the 'old' sitemaps table becomes the persistent historical store.
         // 4. Merge current scan's results into the persistent historical sitemap storage
-        //    (updateOldSitemaps in db.js would need to be adapted to merge into a cumulative list)
+        //    (updateOldSitemaps now uses INSERT OR IGNORE for cumulative storage)
         await updateOldSitemaps({ sites: sites, url: actualSitemapUrl });
 
         if (additions.length === 0) {
