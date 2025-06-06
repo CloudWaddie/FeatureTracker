@@ -141,48 +141,55 @@ export default async function domainFinderController() {
 
         // Check for differences
         const newDomains = uniqueDomainList.filter(item => !currentDomainList.includes(item));
-        const removedDomains = currentDomainList.filter(item => !uniqueDomainList.includes(item));
+        // const removedDomains = currentDomainList.filter(item => !uniqueDomainList.includes(item)); // Removed domains are no longer explicitly tracked for this logic block
 
         logger.info({ newDomains, domain }, `New domains detected for ${domain}`);
-        logger.info({ removedDomains, domain }, `Removed domains detected for ${domain}`);
+        // logger.info({ removedDomains, domain }, `Removed domains detected for ${domain}`); // Removed logging for deletions
 
-        // If there are new or removed domains, update the database and feed
-        if (newDomains.length > 0 || removedDomains.length > 0 || !currentDataExists) {
-             // We update if there are changes OR if there was no valid data previously
-            logger.info(`Changes detected or no previous data for ${domain}. Updating DB and Feed.`);
+        // If there are new domains, or if it's the first scan, update the database and feed
+        if (newDomains.length > 0 || !currentDataExists) {
+            logger.info(`New domains detected or no previous data for ${domain}. Updating DB and Feed.`);
             try {
-                await updateMiscData(`domainFinder_${domain}`, JSON.stringify(uniqueDomainList));
-                logger.info(`Successfully updated data in DB for ${domain}.`);
+                // Combine current scan's unique domains with all previously seen domains
+                const allEverSeenDomains = currentDataExists
+                    ? [...new Set([...currentDomainList, ...uniqueDomainList])]
+                    : uniqueDomainList;
+                await updateMiscData(`domainFinder_${domain}`, JSON.stringify(allEverSeenDomains));
+                logger.info(`Successfully updated accumulative data in DB for ${domain}.`);
 
                 const feedDetails = [];
-                if (newDomains.length > 0) {
+                if (!currentDataExists && newDomains.length > 0) {
+                    // If it's the first scan and new domains were found
+                    feedDetails.push(`Initial scan found: ${newDomains.join(', ')}`);
+                } else if (newDomains.length > 0) {
+                    // For subsequent scans, only report new domains
                     feedDetails.push(`New domains: ${newDomains.join(', ')}`);
-                }
-                 if (removedDomains.length > 0) {
-                    feedDetails.push(`Removed domains: ${removedDomains.join(', ')}`);
-                }
-                 if (!currentDataExists && newDomains.length === uniqueDomainList.length) {
-                     // Special case for the first run where all are new
+                } else if (!currentDataExists && uniqueDomainList.length > 0) {
+                    // First run, uniqueDomainList has items, but newDomains is empty (meaning all items in uniqueDomainList were already in an empty currentDomainList - logically for first scan, newDomains should equal uniqueDomainList)
+                    // This case implies initial population where currentDomainList was empty.
                      feedDetails.push(`Initial scan found: ${uniqueDomainList.join(', ')}`);
-                 } else if (!currentDataExists) {
-                     // Should not happen if uniqueDomainList is populated, but for safety
-                      feedDetails.push(`No previous data, saving current list.`);
-                 }
+                }
+                // No "Removed domains" section for feedDetails
 
-                const feedData = {
-                    type: `domainFinder`,
-                    details: feedDetails.join('\n'), // Join details with newline
-                    appId: `${domain}`,
-                    date: new Date().toUTCString(),
-                };
-                await updateFeed(feedData);
-                logger.info({ domain, details: feedData.details }, `Successfully updated feed for ${domain}.`);
+                // Only update feed if there are details to report
+                if (feedDetails.length > 0) {
+                    const feedData = {
+                        type: `domainFinder`,
+                        details: feedDetails.join('\n'),
+                        appId: `${domain}`,
+                        date: new Date().toUTCString(),
+                    };
+                    await updateFeed(feedData);
+                    logger.info({ domain, details: feedData.details }, `Successfully updated feed for ${domain}.`);
+                } else if (newDomains.length === 0 && currentDataExists) {
+                    logger.info(`No new domains detected for ${domain}. No feed update needed.`);
+                }
 
             } catch (updateError) {
                  logger.error({ err: updateError, domain }, `Error updating DB or Feed for ${domain}`);
             }
         } else {
-            logger.info(`No changes detected for ${domain}. No update needed.`);
+            logger.info(`No new domains detected for ${domain} and data already exists. No update needed.`);
         }
     }
     logger.info('Domain Finder Controller Finished');
