@@ -29,7 +29,8 @@ export async function GET(request) {
                 details TEXT NOT NULL,
                 appId TEXT NOT NULL,
                 date INTEGER NOT NULL,
-                isHidden INTEGER DEFAULT 0
+                isHidden INTEGER DEFAULT 0,
+                summary TEXT NOT NULL DEFAULT 'Error. Summary not generated.',
             )
             `, (err) => {
             if (err) {

@@ -19,6 +19,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { CardSkeleton } from "@/components/ui/card-skeleton";
+import { SparkleButton } from "@/components/ui/sparkle-button";
 
 function PageContent() {
   const [updates, setUpdates] = useState(null);
@@ -237,11 +238,18 @@ function PageContent() {
                     <Link href={`/feed-item/${update.id}`} passHref>
                       <CardTitle className="cursor-pointer hover:underline">{typeDisplayName}</CardTitle>
                     </Link>
-                    {isNewItem && (
-                      <Badge variant="default" className="ml-2">
-                        New
-                      </Badge>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <SparkleButton 
+                        summary={update.summary} 
+                        itemType={typeDisplayName}
+                        itemId={update.id}
+                      />
+                      {isNewItem && (
+                        <Badge variant="default">
+                          New
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                   <CardDescription>{update.appId}</CardDescription>
                 </CardHeader>
