@@ -103,6 +103,12 @@ export default function RootLayout({ children }) {
                                   Yes, we do! You can subscribe to our RSS feed to get the latest updates directly in your feed reader. <Link href="/api/rss" className="text-blue-500 underline">Click here to view the RSS feed</Link>.
                                 </AccordionContent>
                               </AccordionItem>
+                              <AccordionItem value="item-4">
+                                <AccordionTrigger>What is Polestar explore?</AccordionTrigger>
+                                <AccordionContent>
+                                  Polestar explore is a personal tracker requested by my family to find updates to the Polestar app. You can ignore this...
+                                </AccordionContent>
+                              </AccordionItem>
                             </Accordion>
                           </AlertDialogDescription>
                         </AlertDialogHeader>
