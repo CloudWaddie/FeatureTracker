@@ -10,6 +10,7 @@ ai.qwenlm.chat.android
 com.microsoft.copilot
 com.google.android.apps.labs.language.tailwind
 com.google.android.apps.bard
+com.polestar.explore
 
 [ios]
 # Deepseek
