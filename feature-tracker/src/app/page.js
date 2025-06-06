@@ -7,6 +7,7 @@ import { typeDisplayNameMap, FEED_ITEM_SUMMARY_LENGTH } from './consts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { Autolinker } from 'autolinker';
 import DOMPurify from 'dompurify';
 import {
@@ -33,6 +34,7 @@ function PageContent() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilterType, setSelectedFilterType] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [lastSeenHighestId, setLastSeenHighestId] = useState(null);
 
   // Debounce search query
   useEffect(() => {
@@ -138,6 +140,31 @@ function PageContent() {
     return () => clearInterval(timerId);
   }, []);
 
+  // Initialize and manage last seen highest feed ID from localStorage
+  useEffect(() => {
+    const storedLastSeenId = localStorage.getItem('lastSeenHighestFeedId');
+    if (storedLastSeenId) {
+      setLastSeenHighestId(parseInt(storedLastSeenId, 10));
+    }
+  }, []);
+
+  // Update last seen highest ID when updates are loaded
+  useEffect(() => {
+    if (updates && updates.length > 0) {
+      const highestCurrentId = Math.max(...updates.map(update => update.id));
+      
+      if (lastSeenHighestId === null) {
+        // First time - initialize to highest current ID
+        setLastSeenHighestId(highestCurrentId);
+        localStorage.setItem('lastSeenHighestFeedId', highestCurrentId.toString());
+      } else if (highestCurrentId > lastSeenHighestId) {
+        // Update to new highest ID
+        setLastSeenHighestId(highestCurrentId);
+        localStorage.setItem('lastSeenHighestFeedId', highestCurrentId.toString());
+      }
+    }
+  }, [updates, lastSeenHighestId]);
+
   if (loading && !updates) return <p>Loading updates...</p>;
   if (error) return <p>Error loading updates: {error}</p>;
   if (!updates) return <p>No updates available.</p>;
@@ -184,12 +211,20 @@ function PageContent() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {updates.filter(update => !update.isHidden).map((update) => { // Original filter for isHidden is kept client-side for now
           const typeDisplayName = typeDisplayNameMap[update.type] || update.type;
+          const isNewItem = lastSeenHighestId !== null && update.id > lastSeenHighestId;
           return (
             <Card key={update.id}>
               <CardHeader>
-                <Link href={`/feed-item/${update.id}`} passHref>
-                  <CardTitle className="cursor-pointer hover:underline">{typeDisplayName}</CardTitle>
-                </Link>
+                <div className="flex items-center justify-between">
+                  <Link href={`/feed-item/${update.id}`} passHref>
+                    <CardTitle className="cursor-pointer hover:underline">{typeDisplayName}</CardTitle>
+                  </Link>
+                  {isNewItem && (
+                    <Badge variant="default" className="ml-2">
+                      New
+                    </Badge>
+                  )}
+                </div>
                 <CardDescription>{update.appId}</CardDescription>
               </CardHeader>
               <CardContent>
