@@ -1,7 +1,7 @@
 import Sitemapper from 'sitemapper';
 import fs from "fs";
 import { cwd } from "process";
-import { updateNewSitemaps, clearNewSitemapsByURL, findAdditionsSitemaps, findDeletionsSitemaps, clearOldSitemapsByURL, updateOldSitemaps, updateFeed } from '../../../../utils/db.js';
+import { updateNewSitemaps, clearNewSitemapsByURL, findAdditionsSitemaps, updateOldSitemaps, updateFeed } from '../../../../utils/db.js';
 import logger from '../../../../lib/logger.js';
 
 export default async function sitemapController() {

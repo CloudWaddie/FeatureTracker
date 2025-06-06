@@ -344,31 +344,6 @@ export async function updateOldSitemaps(sites) {
     );
 }
 
-export async function clearOldSitemapsByURL(url) {
-    const currentDb = await getDb();
-    if (!currentDb) throw new Error("Database connection not available.");
-    return new Promise((resolve, reject) => {
-        currentDb.serialize(() => {
-            currentDb.run("DELETE FROM sqlite_sequence where name='oldSitemaps'", function(err) {
-                if (err) {
-                    logger.error({ err }, "Error resetting old sitemaps sequence");
-                    // Don't reject here, main operation is deleting from oldSitemaps
-                } else {
-                    logger.info("Old sitemaps sequence reset successfully");
-                }
-            });
-            currentDb.run("DELETE FROM oldSitemaps WHERE siteURL = ?", [url], function(err) {
-                if (err) {
-                    logger.error({ err, url }, "Error clearing old sitemaps by URL");
-                    reject(err);
-                } else {
-                    logger.info({ changes: this.changes }, "Old sitemaps cleared successfully!");
-                    resolve(this.changes);
-                }
-            });
-        });
-    });
-}
 
 export async function getOldSitemapsByURL(url) {
     const currentDb = await getDb();
@@ -479,20 +454,6 @@ export async function findAdditionsSitemaps(url) {
     });
 }
 
-export async function findDeletionsSitemaps(url) {
-    const currentDb = await getDb();
-    if (!currentDb) throw new Error("Database connection not available.");
-    return new Promise((resolve, reject) => {
-        currentDb.all("SELECT * FROM oldSitemaps WHERE url NOT IN (SELECT url FROM newSitemaps WHERE siteURL = ?) AND siteURL = ?", [url, url], (err, rows) => {
-            if (err) {
-                logger.error({ err, url }, "Error finding deletions sitemaps");
-                reject(err);
-            } else {
-                resolve(rows);
-            }
-        });
-    });
-}
 
 export async function updateModels(models) {
     if (!Array.isArray(models)) {
@@ -704,31 +665,6 @@ export async function updateOldFeeds(feeds) {
     );
 }
 
-export async function clearOldFeedsByURL(url) {
-    const currentDb = await getDb();
-    if (!currentDb) throw new Error("Database connection not available.");
-    return new Promise((resolve, reject) => {
-        currentDb.serialize(() => {
-            currentDb.run("DELETE FROM sqlite_sequence where name='oldFeeds'", function(err) {
-                if (err) {
-                    logger.error({ err }, "Error resetting old feeds sequence");
-                    // Don't reject here, main operation is deleting from oldFeeds
-                } else {
-                    logger.info("Old feeds sequence reset successfully");
-                }
-            });
-            currentDb.run("DELETE FROM oldFeeds WHERE siteURL = ?", [url], function(err) {
-                if (err) {
-                    logger.error({ err, url }, "Error clearing old feeds by URL");
-                    reject(err);
-                } else {
-                    logger.info({ changes: this.changes }, "Old feeds cleared successfully!");
-                    resolve(this.changes);
-                }
-            });
-        });
-    });
-}
 
 export async function getOldFeedsByURL(url) {
     const currentDb = await getDb();
@@ -829,20 +765,6 @@ export async function findAdditionsFeeds(url) {
     });
 }
 
-export async function findDeletionsFeeds(url) {
-    const currentDb = await getDb();
-    if (!currentDb) throw new Error("Database connection not available.");
-    return new Promise((resolve, reject) => {
-        currentDb.all("SELECT * FROM oldFeeds WHERE url NOT IN (SELECT url FROM newFeeds WHERE siteURL = ?) AND siteURL = ?", [url, url], (err, rows) => {
-            if (err) {
-                logger.error({ err, url }, "Error finding deletions feeds");
-                reject(err);
-            } else {
-                resolve(rows);
-            }
-        });
-    });
-}
 
 export async function hideFeedByCategory(category, hide = true) {
     const currentDb = await getDb();
