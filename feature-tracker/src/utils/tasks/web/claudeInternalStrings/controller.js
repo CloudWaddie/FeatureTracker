@@ -77,7 +77,7 @@ export default async function claudeInternalStringsController() {
                 parsedOldMiscData = (oldMiscData && oldMiscData.length !== 0) ? JSON.parse(oldMiscData) : [];
             } catch (error) {
                 logger.error({ err: error }, "Error parsing old misc data for claude strings");
-                return; // Exit if old data cannot be parsed
+                return { status: "error", message: "Error parsing old misc data for claude strings", errorDetails: error.message };
             }
 
             // Convert the new set of messages to an array
