@@ -321,6 +321,8 @@ export async function updateOldSitemaps(sites) {
         return Promise.resolve();
     }
 
+    // Use INSERT OR IGNORE to merge new entries into the persistent historical store
+    // This ensures the oldSitemaps table becomes cumulative rather than being overwritten
     return Promise.all(
         sites.sites.map(site => {
             return new Promise((resolve, reject) => {
@@ -328,7 +330,8 @@ export async function updateOldSitemaps(sites) {
                     logger.warn({ site }, "Skipping invalid old sitemap entry in updateOldSitemaps");
                     return resolve(); // Resolve to not break Promise.all for one bad entry
                 }
-                currentDb.run("INSERT INTO oldSitemaps (siteURL, url, lastUpdated) VALUES (?, ?, ?)", [sites.url, site.loc, site.lastmod], function(err) {
+                // Use INSERT OR IGNORE to avoid duplicates while maintaining cumulative storage
+                currentDb.run("INSERT OR IGNORE INTO oldSitemaps (siteURL, url, lastUpdated) VALUES (?, ?, ?)", [sites.url, site.loc, site.lastmod], function(err) {
                     if (err) {
                         logger.error({ err, siteURL: sites.url, siteLoc: site.loc }, "Error updating old sitemaps entry");
                         reject(err);
@@ -341,31 +344,6 @@ export async function updateOldSitemaps(sites) {
     );
 }
 
-export async function clearOldSitemapsByURL(url) {
-    const currentDb = await getDb();
-    if (!currentDb) throw new Error("Database connection not available.");
-    return new Promise((resolve, reject) => {
-        currentDb.serialize(() => {
-            currentDb.run("DELETE FROM sqlite_sequence where name='oldSitemaps'", function(err) {
-                if (err) {
-                    logger.error({ err }, "Error resetting old sitemaps sequence");
-                    // Don't reject here, main operation is deleting from oldSitemaps
-                } else {
-                    logger.info("Old sitemaps sequence reset successfully");
-                }
-            });
-            currentDb.run("DELETE FROM oldSitemaps WHERE siteURL = ?", [url], function(err) {
-                if (err) {
-                    logger.error({ err, url }, "Error clearing old sitemaps by URL");
-                    reject(err);
-                } else {
-                    logger.info({ changes: this.changes }, "Old sitemaps cleared successfully!");
-                    resolve(this.changes);
-                }
-            });
-        });
-    });
-}
 
 export async function getOldSitemapsByURL(url) {
     const currentDb = await getDb();
@@ -476,20 +454,6 @@ export async function findAdditionsSitemaps(url) {
     });
 }
 
-export async function findDeletionsSitemaps(url) {
-    const currentDb = await getDb();
-    if (!currentDb) throw new Error("Database connection not available.");
-    return new Promise((resolve, reject) => {
-        currentDb.all("SELECT * FROM oldSitemaps WHERE url NOT IN (SELECT url FROM newSitemaps WHERE siteURL = ?) AND siteURL = ?", [url, url], (err, rows) => {
-            if (err) {
-                logger.error({ err, url }, "Error finding deletions sitemaps");
-                reject(err);
-            } else {
-                resolve(rows);
-            }
-        });
-    });
-}
 
 export async function updateModels(models) {
     if (!Array.isArray(models)) {
@@ -673,6 +637,8 @@ export async function updateOldFeeds(feeds) {
         return Promise.resolve();
     }
 
+    // Use INSERT OR IGNORE to merge new entries into the persistent historical store
+    // This ensures the oldFeeds table becomes cumulative rather than being overwritten
     return Promise.all(
         feeds.items.map(item => {
             return new Promise((resolve, reject) => {
@@ -685,7 +651,8 @@ export async function updateOldFeeds(feeds) {
                     logger.warn({ item, pubDate: item.pubDate }, "Skipping old feed item with invalid pubDate in updateOldFeeds");
                     return resolve();
                 }
-                currentDb.run("INSERT INTO oldFeeds (siteURL, url, lastUpdated) VALUES (?, ?, ?)", [feeds.link, item.link, pubDateTimestamp], function(err) {
+                // Use INSERT OR IGNORE to avoid duplicates while maintaining cumulative storage
+                currentDb.run("INSERT OR IGNORE INTO oldFeeds (siteURL, url, lastUpdated) VALUES (?, ?, ?)", [feeds.link, item.link, pubDateTimestamp], function(err) {
                     if (err) {
                         logger.error({ err, siteURL: feeds.link, itemLink: item.link }, "Error updating old feeds entry");
                         reject(err);
@@ -698,31 +665,6 @@ export async function updateOldFeeds(feeds) {
     );
 }
 
-export async function clearOldFeedsByURL(url) {
-    const currentDb = await getDb();
-    if (!currentDb) throw new Error("Database connection not available.");
-    return new Promise((resolve, reject) => {
-        currentDb.serialize(() => {
-            currentDb.run("DELETE FROM sqlite_sequence where name='oldFeeds'", function(err) {
-                if (err) {
-                    logger.error({ err }, "Error resetting old feeds sequence");
-                    // Don't reject here, main operation is deleting from oldFeeds
-                } else {
-                    logger.info("Old feeds sequence reset successfully");
-                }
-            });
-            currentDb.run("DELETE FROM oldFeeds WHERE siteURL = ?", [url], function(err) {
-                if (err) {
-                    logger.error({ err, url }, "Error clearing old feeds by URL");
-                    reject(err);
-                } else {
-                    logger.info({ changes: this.changes }, "Old feeds cleared successfully!");
-                    resolve(this.changes);
-                }
-            });
-        });
-    });
-}
 
 export async function getOldFeedsByURL(url) {
     const currentDb = await getDb();
@@ -823,20 +765,6 @@ export async function findAdditionsFeeds(url) {
     });
 }
 
-export async function findDeletionsFeeds(url) {
-    const currentDb = await getDb();
-    if (!currentDb) throw new Error("Database connection not available.");
-    return new Promise((resolve, reject) => {
-        currentDb.all("SELECT * FROM oldFeeds WHERE url NOT IN (SELECT url FROM newFeeds WHERE siteURL = ?) AND siteURL = ?", [url, url], (err, rows) => {
-            if (err) {
-                logger.error({ err, url }, "Error finding deletions feeds");
-                reject(err);
-            } else {
-                resolve(rows);
-            }
-        });
-    });
-}
 
 export async function hideFeedByCategory(category, hide = true) {
     const currentDb = await getDb();

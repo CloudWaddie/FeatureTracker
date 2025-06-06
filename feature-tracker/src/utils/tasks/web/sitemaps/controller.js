@@ -1,7 +1,7 @@
 import Sitemapper from 'sitemapper';
 import fs from "fs";
 import { cwd } from "process";
-import { updateNewSitemaps, clearNewSitemapsByURL, findAdditionsSitemaps, findDeletionsSitemaps, clearOldSitemapsByURL, updateOldSitemaps, updateFeed } from '../../../../utils/db.js';
+import { updateNewSitemaps, clearNewSitemapsByURL, findAdditionsSitemaps, updateOldSitemaps, updateFeed } from '../../../../utils/db.js';
 import logger from '../../../../lib/logger.js';
 
 export default async function sitemapController() {
@@ -72,25 +72,33 @@ export default async function sitemapController() {
         }
 
         // Use actualSitemapUrl for all DB operations related to this sitemap
+        // 1. Clear temporary storage for the current scan's results
         await clearNewSitemapsByURL(actualSitemapUrl);
+        // 2. Store current scan's results into temporary storage
         await updateNewSitemaps({ sites: sites, url: actualSitemapUrl });
+        // 3. Find additions by comparing temporary storage with persistent historical storage
         const additions = await findAdditionsSitemaps(actualSitemapUrl);
-        const deletions = await findDeletionsSitemaps(actualSitemapUrl);
-        await clearOldSitemapsByURL(actualSitemapUrl);
+        // 4. Merge current scan's results into the persistent historical sitemap storage
+        //    (updateOldSitemaps now uses INSERT OR IGNORE for cumulative storage)
         await updateOldSitemaps({ sites: sites, url: actualSitemapUrl });
 
-        if (additions.length === 0 && deletions.length === 0) {
-            logger.info(`No changes detected for ${actualSitemapUrl}`);
+        if (additions.length === 0) {
+            logger.info(`No new additions detected for ${actualSitemapUrl}`);
             continue;
         }
         else {
-            logger.info({ additions, url: actualSitemapUrl }, `Additions for ${actualSitemapUrl}`);
-            logger.info({ deletions, url: actualSitemapUrl }, `Deletions for ${actualSitemapUrl}`);
+            logger.info({ additions, url: actualSitemapUrl }, `New additions for ${actualSitemapUrl}`);
             const readableAdditions = additions.map(item => item.url).join(', '); // item.url refers to db schema
-            const readableDeletions = deletions.map(item => item.url).join(', ');
+            // Feed details will only contain additions.
+            // Consider if it's the first run (e.g. by checking if historical data existed before updateOldSitemaps)
+            // For now, we'll assume findAdditionsSitemaps correctly identifies items as "new" on the first scan.
+            let feedDetailString = `New sitemap entries: ${readableAdditions}`;
+            // A more sophisticated check for "Initial scan" might involve checking if 'old' data existed prior to this run.
+            // However, if findAdditionsSitemaps returns all items on first scan, this is sufficient.
+
             const dataToAddToFeed = {
                 type: 'sitemap',
-                details: `Additions: ${readableAdditions}, Deletions: ${readableDeletions}`,
+                details: feedDetailString,
                 appId: actualSitemapUrl, // Use actualSitemapUrl for consistency
             };
             logger.debug({actualSitemapUrl, dataToAddToFeed}, `Data to add to feed for ${actualSitemapUrl}`);
