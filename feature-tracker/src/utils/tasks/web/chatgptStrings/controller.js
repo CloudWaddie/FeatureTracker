@@ -56,7 +56,7 @@ export default async function chatgptStringsController() {
 
         // Navigate to ChatGPT and wait for network to be idle
         try {
-            await page.goto("https://chatgpt.com/", { waitUntil: 'networkidle', timeout: 180000 });
+            await page.goto("https://chatgpt.com/", { waitUntil: 'domcontentloaded', timeout: 180000 });
         } catch (timeoutError) {
             logger.warn(`Navigation timeout occurred, continuing with collected data: ${timeoutError.message}`);
         }

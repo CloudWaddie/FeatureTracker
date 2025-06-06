@@ -56,7 +56,7 @@ export default async function claudeInternalStringsController() {
 
         // Navigate to claude and wait for network to be idle
         try {
-            await page.goto("https://staging.claude.ai/new", { waitUntil: 'load', timeout: 60000 });
+            await page.goto("https://staging.claude.ai/new", { waitUntil: 'domcontentloaded', timeout: 60000 });
         } catch (timeoutError) {
             logger.warn(`Navigation timeout occurred, continuing with collected data: ${timeoutError.message}`);
         }
