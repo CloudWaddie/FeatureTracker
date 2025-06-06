@@ -1,7 +1,7 @@
 import Parser from "rss-parser";
 import fs from "fs";
 import { cwd } from "process";
-import { updateFeed, updateOldFeeds, updateNewFeeds, clearNewFeedsByURL, clearOldFeedsByURL, findAdditionsFeeds, findDeletionsFeeds } from '../../../../utils/db.js';
+import { updateFeed, updateOldFeeds, updateNewFeeds, clearNewFeedsByURL, findAdditionsFeeds } from '../../../../utils/db.js';
 import logger from '../../../../lib/logger.js';
 
 export default async function feedController() {
@@ -61,24 +61,29 @@ export default async function feedController() {
         };
         await clearNewFeedsByURL(feedLink);
         await updateNewFeeds(feedDataForDB);
+        // findAdditionsFeeds compares against the persistent historical list
         const additions = await findAdditionsFeeds(feedLink);
-        const deletions = await findDeletionsFeeds(feedLink);
-        await clearOldFeedsByURL(feedLink);
+        // updateOldFeeds now uses INSERT OR IGNORE for cumulative storage
         await updateOldFeeds(feedDataForDB);
-        if (additions.length === 0 && deletions.length === 0) {
-            logger.info(`No changes detected for ${url}`);
+
+        if (additions.length === 0) {
+            logger.info(`No new feed items detected for ${url}`);
             continue;
         }
         else {
-            const readableAdditions = additions.map(item => item.url || item.link || item.title).join(', ');
-            const readableDeletions = deletions.map(item => item.url || item.link || item.title).join(', ');
+            const readableAdditions = additions.map(item => item.url || item.link || item.title).join('; '); // Using semicolon for better readability if titles have commas
+            // Feed details will only contain additions.
+            // Similar to sitemaps, assuming findAdditionsFeeds handles "new" on first scan correctly.
+            let feedDetailString = `New feed items: ${readableAdditions}`;
+
             const dataToAddToFeed = {
                 type: 'rssFeed',
-                details: `Additions: ${readableAdditions}, Deletions: ${readableDeletions}`,
+                details: feedDetailString,
                 appId: feedLink,
             };
             try {
                 await updateFeed(dataToAddToFeed);
+                logger.info({ feedLink, details: feedDetailString }, `Successfully updated feed for ${feedLink}`);
             } catch (error) {
                 logger.error({ err: error, url }, `Error updating feed for ${url}`);
             }
