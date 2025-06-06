@@ -284,7 +284,7 @@ export async function updateFeed(data) {
         try {
             const response = await genAI.models.generateContent({
                 model: "gemini-2.0-flash",
-                contents: `Generate a concise summary of the following feed update. You should tell the user what changed, based on the provided information: ${JSON.stringify(data)}`,
+                contents: `You are being used to generate summaries in an automated app that finds upcoming or newly released updates to AI apps. Generate a concise summary of the following feed update. You should tell the user what changed, based on the provided information: ${JSON.stringify(data)}`,
             });
             summary = response.text || "No summary generated.";
         } catch (error) {
