@@ -1,7 +1,7 @@
 import Parser from "rss-parser";
 import fs from "fs";
 import { cwd } from "process";
-import { updateFeed, updateOldFeeds, updateNewFeeds, clearNewFeedsByURL, clearOldFeedsByURL, findAdditionsFeeds, findDeletionsFeeds } from '../../../../utils/db.js';
+import { updateFeed, updateOldFeeds, updateNewFeeds, clearNewFeedsByURL, findAdditionsFeeds } from '../../../../utils/db.js';
 import logger from '../../../../lib/logger.js';
 
 export default async function feedController() {
