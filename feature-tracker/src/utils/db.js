@@ -289,7 +289,7 @@ export async function updateFeed(data) {
             summary = response.text || "No summary generated.";
         } catch (error) {
             logger.error({ error, data }, "Error generating summary with Gemini API");
-            summary = "No summary available. Gemini API error. " + (error.message || "Unknown error");
+            summary = "No summary available. Gemini API error. ";
         }
     }
     data.summary = summary; // Add the generated summary to the data object
