@@ -223,7 +223,8 @@ function PageContent() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {updates.filter(update => !update.isHidden).map((update) => { // Original filter for isHidden is kept client-side for now
           const typeDisplayName = typeDisplayNameMap[update.type] || update.type;
-          const isNewItem = lastSeenHighestId !== null && update.id > lastSeenHighestId;
+          // Show badge if: no stored value (first time) OR item ID is higher than stored value
+          const isNewItem = lastSeenHighestId === null || update.id > lastSeenHighestId;
           return (
             <Card key={update.id}>
               <CardHeader>
