@@ -77,7 +77,7 @@ export default async function claudeStringsController() {
                 parsedOldMiscData = (oldMiscData && oldMiscData.length !== 0) ? JSON.parse(oldMiscData) : [];
             } catch (error) {
                 logger.error({ err: error }, "Error parsing old misc data for claude strings");
-                return; // Exit if old data cannot be parsed
+                return { status: "error", message: "Error parsing old misc data for claude strings", errorDetails: error.message };
             }
 
             // Convert the new set of messages to an array
@@ -120,11 +120,12 @@ export default async function claudeStringsController() {
 
     } catch (error) {
         logger.error({ err: error }, 'An error occurred in the claudeStringsController task route');
+        return { status: "error", message: "An error occurred in the claudeStringsController task route", errorDetails: error.message };
     } finally {
         // Ensure the browser is closed even if errors occur
         if (browser) {
             await browser.close();
         }
     }
-    return "claudeStringsController task completed successfully.";
+    return { status: "success", message: "claudeStringsController task completed successfully." };
 }

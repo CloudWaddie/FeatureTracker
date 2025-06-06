@@ -77,7 +77,7 @@ export default async function chatgptStringsController() {
                 parsedOldMiscData = (oldMiscData && oldMiscData.length !== 0) ? JSON.parse(oldMiscData) : [];
             } catch (error) {
                 logger.error({ err: error }, "Error parsing old misc data for chatgpt strings");
-                return; // Exit if old data cannot be parsed
+                return { status: "error", message: "Error parsing old misc data for chatgpt strings", errorDetails: error.message };
             }
 
             // Convert the new set of messages to an array
@@ -120,11 +120,12 @@ export default async function chatgptStringsController() {
 
     } catch (error) {
         logger.error({ err: error }, 'An error occurred in the chatgptStringsController task route');
+        return { status: "error", message: "An error occurred in the chatgptStringsController task route", errorDetails: error.message };
     } finally {
         // Ensure the browser is closed even if errors occur
         if (browser) {
             await browser.close();
         }
     }
-    return "chatgptStringsController task completed successfully.";
+    return { status: "success", message: "chatgptStringsController task completed successfully." };
 }
