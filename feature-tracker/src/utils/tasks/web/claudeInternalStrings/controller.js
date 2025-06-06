@@ -120,6 +120,7 @@ export default async function claudeInternalStringsController() {
 
     } catch (error) {
         logger.error({ err: error }, 'An error occurred in the claudeInternalStringsController task route');
+        return { status: "error", message: 'An error occurred in the claudeInternalStringsController task route', errorDetails: error.message };
     } finally {
         // Ensure the browser is closed even if errors occur
         if (browser) {
