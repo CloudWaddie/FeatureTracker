@@ -3,6 +3,7 @@ import { getFeed } from "@/utils/db";
 import { NextResponse } from "next/server";
 import { typeDisplayNameMap } from '@/app/consts';
 import logger from "@/lib/logger";
+import { FEED_ITEM_SUMMARY_LENGTH } from '@/app/consts';
 
 export async function GET(request) {
   try {
@@ -28,7 +29,7 @@ export async function GET(request) {
       
       feed.item({
         title: itemTitle,
-        description: update.summary || `Details: ${update.details}`,
+        description: (update.summary || update.details).length > FEED_ITEM_SUMMARY_LENGTH ? update.summary || update.details : update.details,
         url: `${siteUrl}/#update-${update.id}`,
         guid: update.id.toString(),
         date: new Date(update.date).toISOString(),
