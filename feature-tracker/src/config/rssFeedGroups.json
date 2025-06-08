@@ -1,0 +1,9 @@
+{
+  "appUpdates": ["appversion-android", "appversion-ios", "strings"],
+  "openai": ["chatgptStrings"],
+  "web": ["domainFinder", "sitemap", "rssFeed"],
+  "google": ["geminiDates", "geminiPreferences", "geminiValues", "googleLabsPages"],
+  "models": ["models", "leaderboard"],
+  "misc": ["perplexityStrings"],
+  "anthropic": ["claudeStrings"]
+}
