@@ -4,24 +4,53 @@ import { NextResponse } from "next/server";
 import { typeDisplayNameMap } from '@/app/consts';
 import logger from "@/lib/logger";
 import { FEED_ITEM_SUMMARY_LENGTH } from '@/app/consts';
+import fs from 'fs/promises';
+import path from 'path';
 
 export async function GET(request) {
   try {
-    const domain = process.env.DOMAIN || 'http://localhost:3000'; // Fallback for local dev if DOMAIN is not set
-    const feedUrl = `${domain}/api/rss`;
+    const { searchParams } = new URL(request.url);
+    const groupTypeParam = searchParams.get('type');
+
+    const domain = process.env.DOMAIN || 'http://localhost:3000';
+    const feedUrl = `${domain}/api/rss${groupTypeParam ? `?type=${groupTypeParam}` : ''}`;
     const siteUrl = domain;
 
+    let feedFilterTypes = null;
+    let feedTitle = "Feature Tracker";
+    let feedDescription = "Realtime tracking of features added to AI apps";
+
+    if (groupTypeParam) {
+      try {
+        const groupsFilePath = path.join(process.cwd(), 'src', 'config', 'rssFeedGroups.json');
+        const groupsFileContent = await fs.readFile(groupsFilePath, 'utf-8');
+        const rssFeedGroups = JSON.parse(groupsFileContent);
+        
+        if (rssFeedGroups[groupTypeParam]) {
+          feedFilterTypes = rssFeedGroups[groupTypeParam];
+          feedTitle = `Feature Tracker - ${groupTypeParam.charAt(0).toUpperCase() + groupTypeParam.slice(1)} Updates`;
+          feedDescription = `Realtime tracking of ${groupTypeParam} features added to AI apps`;
+        } else {
+          logger.warn(`RSS feed group type "${groupTypeParam}" not found. Serving all items.`);
+        }
+      } catch (err) {
+        logger.error("Error reading or parsing rssFeedGroups.json:", err);
+        // Fallback to serving all items if config is missing or malformed
+      }
+    }
+
     const feed = new RSS({
-      title: "Feature Tracker",
-      description: "Realtime tracking of features added to AI apps",
+      title: feedTitle,
+      description: feedDescription,
       feed_url: feedUrl,
       site_url: siteUrl,
       language: 'en',
       pubDate: new Date().toISOString(),
-      ttl: 15, // Time to live in minutes lowered to make some rss services update faster
+      ttl: 15, 
     });
 
-    const updates = await getFeed();
+    // Pass page 1, showHidden false, no searchQuery, and the determined filterType(s)
+    const updates = await getFeed(1, false, null, feedFilterTypes);
 
     updates.forEach(update => {
       const typeDisplayName = typeDisplayNameMap[update.type] || update.type;

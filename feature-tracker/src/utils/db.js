@@ -78,8 +78,14 @@ export async function getFeed(page = 1, showHidden = false, searchQuery = null, 
         }
 
         if (filterType) {
-            conditions.push("type = ?");
-            params.push(filterType);
+            if (Array.isArray(filterType) && filterType.length > 0) {
+                const placeholders = filterType.map(() => '?').join(',');
+                conditions.push(`type IN (${placeholders})`);
+                params.push(...filterType);
+            } else if (typeof filterType === 'string') {
+                conditions.push("type = ?");
+                params.push(filterType);
+            }
         }
 
         if (searchQuery) {
@@ -226,8 +232,14 @@ export async function getTotalPages(showHidden, searchQuery = null, filterType =
         }
 
         if (filterType) {
-            conditions.push("type = ?");
-            params.push(filterType);
+            if (Array.isArray(filterType) && filterType.length > 0) {
+                const placeholders = filterType.map(() => '?').join(',');
+                conditions.push(`type IN (${placeholders})`);
+                params.push(...filterType);
+            } else if (typeof filterType === 'string') {
+                conditions.push("type = ?");
+                params.push(filterType);
+            }
         }
 
         if (searchQuery) {
