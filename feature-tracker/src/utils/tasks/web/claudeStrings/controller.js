@@ -20,8 +20,13 @@ export default async function claudeStringsController() {
             responseProcessingPromises.push(
                 (async () => {
                     try {
-                        // Get the text content of the response.
-                        const text = await response.text();
+                        // Fetch the JS file directly instead of using response.text()
+                        const jsResponse = await fetch(response.url());
+                        if (!jsResponse.ok) {
+                            logger.warn(`Failed to fetch ${response.url()}: ${jsResponse.status}`);
+                            return;
+                        }
+                        const text = await jsResponse.text();
 
                         // Regex to find defaultMessage strings
                         const regex = /defaultMessage\s*:\s*(["'])(.*?)\1/g;
