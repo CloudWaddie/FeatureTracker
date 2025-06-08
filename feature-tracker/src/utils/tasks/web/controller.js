@@ -30,7 +30,7 @@ const runIndividually = [
     googleLabsController,
     lmarenaController,
     claudeInternalStringsController
-]
+];
 
 export default async function webController() {
     logger.info("Running web controller...");
