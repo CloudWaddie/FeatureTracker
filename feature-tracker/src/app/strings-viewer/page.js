@@ -63,7 +63,7 @@ export default function StringsViewerPage() {
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
                     }
-                    const data = await response.text(); // Assuming the API returns XML as text
+                    const data = await response.text(); // Fetch XML data from API
                     setXmlData(data);
                 } catch (error) {
                     setXmlData(''); // Clear data on error
