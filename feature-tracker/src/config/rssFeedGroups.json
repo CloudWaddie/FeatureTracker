@@ -5,5 +5,5 @@
   "google": ["geminiDates", "geminiPreferences", "geminiValues", "googleLabsPages"],
   "models": ["models", "leaderboard"],
   "misc": ["perplexityStrings"],
-  "claude": ["claudeStrings"]
+  "anthropic": ["claudeStrings"]
 }
