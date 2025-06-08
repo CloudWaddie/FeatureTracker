@@ -15,23 +15,33 @@ import claudeInternalStringsController from './claudeInternalStrings/controller.
 
 const controllers = [
     sitemapController,
-    lmarenaController,
     geminiDatesController,
     feedController,
     domainFinderController,
     geminiValuesController,
-    googleLabsController,
     geminiPreferencesController,
+];
+
+const runIndividually = [
     chatgptStringsController,
     lmLeaderboardsController,
     perplexityStringsController,
     claudeStringsController,
+    googleLabsController,
+    lmarenaController,
     claudeInternalStringsController
 ];
 
 export default async function webController() {
     logger.info("Running web controller...");
     const results = await Promise.all(controllers.map(controller => controller()));
+    for (const controller of runIndividually) {
+        try {
+            await controller();
+        } catch (error) {
+            logger.error({ error }, `Error running controller: ${controller.name}`);
+        }
+    }
     logger.info({ results }, "Web controller tasks completed");
     return "Web controller is running...";
 }
