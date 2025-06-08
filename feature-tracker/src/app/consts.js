@@ -15,6 +15,7 @@ export const typeDisplayNameMap = {
     'leaderboard': 'Updated leaderboards',
     'perplexityStrings': 'Updated Perplexity strings',
     'claudeStrings': 'Updated Claude strings',
+    'geminiButtons': 'Updated Gemini buttons',
   };
 
 export const FEED_ITEM_SUMMARY_LENGTH = 500;
