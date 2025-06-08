@@ -41,8 +41,8 @@ export default async function lmarenaController() {
             logger.info({ compareresponse }, "Response from compareModels");
             await updateModels(jsObject);
             // Format details string for the feed - Added models, removed models using the id from the response
-            const addedModels = compareresponse.additions.map(model => `${model.id} (${model.name})`).join(', ');
-            const removedModels = compareresponse.deletions.map(model => `${model.id} (${model.name})`).join(', ');
+            const addedModels = compareresponse.additions.map(model => `${model.id}${model.name ? ` (${model.name})` : ''}`).join(', ');
+            const removedModels = compareresponse.deletions.map(model => `${model.id}${model.name ? ` (${model.name})` : ''}`).join(', ');
             const formattedDetails = `Added models: ${addedModels} Removed models: ${removedModels}`;
             logger.info({ formattedDetails }, "Formatted details for feed");
             // Update feed - type, details, appId, date
