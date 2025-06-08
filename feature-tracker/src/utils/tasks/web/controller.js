@@ -37,7 +37,7 @@ export default async function webController() {
     const results = await Promise.all(controllers.map(controller => controller()));
     for (const controller of runIndividually) {
         try {
-            controller();
+            await controller();
         } catch (error) {
             logger.error({ error }, `Error running controller: ${controller.name}`);
         }
