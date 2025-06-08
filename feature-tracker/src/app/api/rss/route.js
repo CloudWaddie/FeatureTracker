@@ -29,7 +29,7 @@ export async function GET(request) {
       
       feed.item({
         title: itemTitle,
-        description: update.description.length > FEED_ITEM_SUMMARY_LENGTH ? update.summary : update.description,
+        description: (update.summary || update.details).length > FEED_ITEM_SUMMARY_LENGTH ? update.summary || update.details : update.details,
         url: `${siteUrl}/#update-${update.id}`,
         guid: update.id.toString(),
         date: new Date(update.date).toISOString(),
