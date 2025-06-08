@@ -41,15 +41,15 @@ export default async function lmarenaController() {
             logger.info({ compareresponse }, "Response from compareModels");
             await updateModels(jsObject);
             // Format details string for the feed - Added models, removed models using the id from the response
-            const addedModels = compareresponse.additions.map(model => model.id).join(', ');
-            const removedModels = compareresponse.deletions.map(model => model.id).join(', ');
+            const addedModels = compareresponse.additions.map(model => `${model.id} (${model.name})`).join(', ');
+            const removedModels = compareresponse.deletions.map(model => `${model.id} (${model.name})`).join(', ');
             const formattedDetails = `Added models: ${addedModels} Removed models: ${removedModels}`;
             logger.info({ formattedDetails }, "Formatted details for feed");
             // Update feed - type, details, appId, date
             const dataToUpdate = {
                 type: 'models',
                 details: formattedDetails,
-                appId: 'lmarena',
+                appId: 'LMArena WebDev',
             }
             await updateFeed(dataToUpdate);
             logger.info("Feed updated successfully with the new or removed models.");
