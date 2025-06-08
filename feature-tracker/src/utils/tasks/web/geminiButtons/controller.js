@@ -48,16 +48,16 @@ export default async function geminiButtonsController() {
         // There was a change
         const additions = actualButtonData.filter(button => !existingData.some(existingButton => existingButton.label === button.label));
         const removals = existingData.filter(button => !actualButtonData.some(newButton => newButton.label === button.label));
-        const formatedDetails = `Additions: ${additions.map(button => `${button.label} (${button.icon})`).join(", ")}\nRemovals: ${removals.map(button => `${button.label} (${button.icon})`).join(", ")}`;
+        const formattedDetails = `Additions: ${additions.map(button => `${button.label} (${button.icon})`).join(", ")}\nRemovals: ${removals.map(button => `${button.label} (${button.icon})`).join(", ")}`;
         if (additions.length === 0 && removals.length === 0) {
             logger.info("No changes detected in Gemini buttons data.");
             return;
         };
-        logger.info(`Gemini buttons data has changed:\n${formatedDetails}`);
+        logger.info(`Gemini buttons data has changed:\n${formattedDetails}`);
         await updateMiscData("geminiButtons", JSON.stringify(actualButtonData));
         await updateFeed({
             type: "geminiButtons",
-            details: formatedDetails,
+            details: formattedDetails,
             appId: "Gemini Web App"
         });
         logger.info("Gemini buttons data updated successfully.");
