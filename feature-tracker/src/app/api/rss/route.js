@@ -58,7 +58,7 @@ export async function GET(request) {
       
       feed.item({
         title: itemTitle,
-        description: (update.summary || update.details).length > FEED_ITEM_SUMMARY_LENGTH ? update.summary || update.details : update.details,
+        description: update.details.length > FEED_ITEM_SUMMARY_LENGTH ? (update.summary || update.details) : update.details,
         url: `${siteUrl}/feed-item/${update.id}`,
         guid: update.id.toString(),
         date: new Date(update.date).toISOString(),
