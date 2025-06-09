@@ -2,7 +2,7 @@
   "appUpdates": ["appversion-android", "appversion-ios", "strings"],
   "openai": ["chatgptStrings"],
   "web": ["domainFinder", "sitemap", "rssFeed"],
-  "google": ["geminiDates", "geminiPreferences", "geminiValues", "googleLabsPages"],
+  "google": ["geminiDates", "geminiPreferences", "geminiValues", "googleLabsPages", "geminiButtons"],
   "models": ["models", "leaderboard"],
   "misc": ["perplexityStrings"],
   "anthropic": ["claudeStrings"]
