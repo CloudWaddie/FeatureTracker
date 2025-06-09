@@ -40,6 +40,7 @@
     "node-cron": "^3.0.3",
     "pino": "^9.7.0",
     "playwright": "^1.52.0",
+    "posthog-js": "^1.249.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "rss": "^1.2.2",

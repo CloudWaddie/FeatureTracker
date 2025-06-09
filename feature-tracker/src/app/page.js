@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/card";
 import { CardSkeleton } from "@/components/ui/card-skeleton";
 import { SparkleButton } from "@/components/ui/sparkle-button";
+import { useFeatureFlagEnabled } from 'posthog-js/react'
 
 function PageContent() {
   const [updates, setUpdates] = useState(null);
@@ -30,6 +31,7 @@ function PageContent() {
   const timeSince = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
   const searchParams = useSearchParams();
   const router = useRouter();
+  const aiSummariesEnabled = useFeatureFlagEnabled('ai-summaries')
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
@@ -239,11 +241,13 @@ function PageContent() {
                       <CardTitle className="cursor-pointer hover:underline">{typeDisplayName}</CardTitle>
                     </Link>
                     <div className="flex items-center gap-2">
-                      <SparkleButton 
-                        summary={update.summary} 
-                        itemType={typeDisplayName}
-                        itemId={update.id}
-                      />
+                      {aiSummariesEnabled && (
+                        <SparkleButton 
+                          summary={update.summary} 
+                          itemType={typeDisplayName}
+                          itemId={update.id}
+                        />
+                      )}
                       {isNewItem && (
                         <Badge variant="default">
                           New
