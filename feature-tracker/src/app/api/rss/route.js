@@ -66,7 +66,7 @@ export async function GET(request) {
     updates.forEach(update => {
       const typeDisplayName = typeDisplayNameMap[update.type] || update.type;
       const itemTitle = `${typeDisplayName}: ${update.appId}`;
-      let itemDescription = (update.details || "").length > FEED_ITEM_SUMMARY_LENGTH ? (update.summary || (update.details || "")) : (update.details || "");
+      let itemDescription = update.details.length > FEED_ITEM_SUMMARY_LENGTH ? (update.summary || update.details) : update.details;
 
       if (prefixParam) {
         itemDescription = `${prefixParam}\n${itemDescription}`;
