@@ -11,9 +11,20 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const groupTypeParam = searchParams.get('type');
+    const prefixParam = searchParams.get('prefix');
 
     const domain = process.env.DOMAIN || 'http://localhost:3000';
-    const feedUrl = `${domain}/api/rss${groupTypeParam ? `?type=${groupTypeParam}` : ''}`;
+    let feedUrl = `${domain}/api/rss`;
+    const queryParams = [];
+    if (groupTypeParam) {
+      queryParams.push(`type=${groupTypeParam}`);
+    }
+    if (prefixParam) {
+      queryParams.push(`prefix=${prefixParam}`);
+    }
+    if (queryParams.length > 0) {
+      feedUrl += `?${queryParams.join('&')}`;
+    }
     const siteUrl = domain;
 
     let feedFilterTypes = null;
@@ -55,10 +66,15 @@ export async function GET(request) {
     updates.forEach(update => {
       const typeDisplayName = typeDisplayNameMap[update.type] || update.type;
       const itemTitle = `${typeDisplayName}: ${update.appId}`;
+      let itemDescription = update.details.length > FEED_ITEM_SUMMARY_LENGTH ? (update.summary || update.details) : update.details;
+
+      if (prefixParam) {
+        itemDescription = `${prefixParam}\n${itemDescription}`;
+      }
       
       feed.item({
         title: itemTitle,
-        description: update.details.length > FEED_ITEM_SUMMARY_LENGTH ? (update.summary || update.details) : update.details,
+        description: itemDescription,
         url: `${siteUrl}/feed-item/${update.id}`,
         guid: update.id.toString(),
         date: new Date(update.date).toISOString(),
