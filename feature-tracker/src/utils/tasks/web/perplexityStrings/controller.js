@@ -65,6 +65,7 @@ export default async function perplexityStringsController() {
         // Wait for all response processing promises to resolve
         // This ensures all JS files are processed before proceeding
         await Promise.all(responseProcessingPromises);
+        logger.info(`Collected ${allDefaultMessages.size} unique default messages from responses.`);
 
         try {
             // Retrieve old data from the database
