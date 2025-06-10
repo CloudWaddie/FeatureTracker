@@ -20,13 +20,7 @@ export default async function perplexityStringsController() {
             responseProcessingPromises.push(
                 (async () => {
                     try {
-                        // Fetch the JS file directly instead of using response.text()
-                        const jsResponse = await fetch(response.url());
-                        if (!jsResponse.ok) {
-                            logger.warn(`Failed to fetch ${response.url()}: ${jsResponse.status}`);
-                            return;
-                        }
-                        const text = await jsResponse.text();
+                        const text = await response.text();
 
                         // Regex to find defaultMessage strings
                         const regex = /defaultMessage\s*:\s*(["'])(.*?)\1/g;
