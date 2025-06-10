@@ -56,6 +56,7 @@ export default async function perplexityStringsController() {
         // Navigate to perplexity and wait for network to be idle
         try {
             await page.goto("https://www.perplexity.ai/", { waitUntil: 'domcontentloaded', timeout: 180000 });
+            logger.info(`Page title: ${await page.title()}`);
             // Wait for the page to load an extra 10 seconds to ensure all JS files are fetched
             await page.waitForTimeout(10000);
         } catch (timeoutError) {
