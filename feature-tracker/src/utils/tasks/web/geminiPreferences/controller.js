@@ -42,7 +42,6 @@ export default async function geminiPreferencesController() {
     // Parse previous preferences
     let previousPreferences = [];
     let rawPreviousPreferencesString = null;
-
     if (miscDataRows && miscDataRows.length > 0 && miscDataRows[0] && typeof miscDataRows[0].value === 'string') {
         rawPreviousPreferencesString = miscDataRows[0].value;
         logger.debug(`Retrieved raw previous preferences string: '${rawPreviousPreferencesString}'`);
