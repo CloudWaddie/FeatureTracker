@@ -27,7 +27,7 @@ export default async function geminiModelsController() {
         // Update the database with the new models
         await updateMiscData('geminiModelsApi', JSON.stringify(models));
         logger.info(`Updated gemini models in the database. New: ${newModels.length}, Removed: ${removedModels.length}`);
-        let formattedDetails;
+        let formattedDetails = '';
         if (newModels.length > 0) {
             formattedDetails += `New models: ${newModels.map(model => model.name).join(', ')}. `;
         }
