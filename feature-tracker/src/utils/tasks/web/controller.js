@@ -13,6 +13,7 @@ import perplexityStringsController from './perplexityStrings/controller.js';
 import claudeStringsController from './claudeStrings/controller.js';
 import claudeInternalStringsController from './claudeInternalStrings/controller.js';
 import geminiButtonsController from './geminiButtons/controller.js';
+import geminiModelsController from './geminiModels/controller.js';
 
 const controllers = [
     sitemapController,
@@ -21,7 +22,8 @@ const controllers = [
     domainFinderController,
     geminiValuesController,
     geminiPreferencesController,
-    geminiButtonsController
+    geminiButtonsController,
+    geminiModelsController
 ];
 
 const runIndividually = [
