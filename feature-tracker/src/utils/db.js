@@ -256,10 +256,10 @@ export async function getTotalPages(showHidden, searchQuery = null, filterType =
             conditions.push("(isHidden = 1 OR isHidden = 0)");
         }
 
-        // Note: getTotalPages might also need to consider typesArray if pagination in BetaChatView becomes complex.
-        // For now, assuming BetaChatView fetches all items for a category (or a single page of them)
-        // and pagination within BetaChatView content area would be a separate concern if needed later.
-        // If BetaChatView needs paginated results for its content area, then typesArray should be handled here too.
+        // Note: getTotalPages might also need to consider typesArray if pagination in BetaUIView becomes complex.
+        // For now, assuming BetaUIView fetches all items for a category (or a single page of them)
+        // and pagination within BetaUIView content area would be a separate concern if needed later.
+        // If BetaUIView needs paginated results for its content area, then typesArray should be handled here too.
         if (filterType) { // Existing filterType logic
             if (Array.isArray(filterType) && filterType.length > 0) {
                 const placeholders = filterType.map(() => '?').join(',');
