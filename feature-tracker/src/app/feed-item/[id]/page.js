@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 // typeDisplayNameMap will be used by FeedCard, which imports it from @/app/consts
 // Autolinker and DOMPurify are used by FeedCard
 import FeedCard from '@/components/FeedCard'; // Import the FeedCard component
-import BetaChatView from '@/components/BetaUIView'; // Corrected import path
+import BetaUIView from '@/components/BetaUIView'; // Corrected import path
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useFeatureFlagEnabled } from 'posthog-js/react';
 
@@ -73,7 +73,7 @@ function FeedItemDetailContent() {
       )}
 
       {betaUiFeatureEnabled && activeUITab === "beta" && (
-        <BetaChatView />
+        <BetaUIView />
       )}
     </div>
   );
