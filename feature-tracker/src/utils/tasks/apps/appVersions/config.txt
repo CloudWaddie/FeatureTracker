@@ -11,6 +11,9 @@ com.microsoft.copilot
 com.google.android.apps.labs.language.tailwind
 com.google.android.apps.bard
 com.polestar.explore
+com.suno.android
+com.facebook.stella
+kling.ai.video.chat
 
 [ios]
 # Deepseek
@@ -33,3 +36,9 @@ com.polestar.explore
 6737527615
 # Gemini
 6477489729
+# Suno
+6480136315
+# Meta AI
+1558240027
+# Kling
+6738049229

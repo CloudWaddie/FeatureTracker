@@ -8,3 +8,4 @@ https://qwenlm.github.io/en/sitemap.xml
 https://labs.google/sitemap.xml
 https://blog.lmarena.ai/sitemap.xml
 https://fal.ai/sitemap.xml
+https://platform.openai.com/sitemap.xml
