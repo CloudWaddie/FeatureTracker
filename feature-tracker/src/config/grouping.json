@@ -1,9 +1,9 @@
 {
-  "appUpdates": ["appversion-android", "appversion-ios", "strings"],
-  "openai": ["chatgptStrings"],
   "web": ["domainFinder", "sitemap", "rssFeed"],
-  "google": ["geminiDates", "geminiPreferences", "geminiValues", "googleLabsPages", "geminiButtons"],
+  "appUpdates": ["appversion-android", "appversion-ios", "strings"],
   "models": ["models", "leaderboard"],
-  "misc": ["perplexityStrings"],
-  "anthropic": ["claudeStrings"]
+  "anthropic": ["claudeStrings"],
+  "openai": ["chatgptStrings"],
+  "google": ["geminiDates", "geminiPreferences", "geminiValues", "googleLabsPages", "geminiButtons"],
+  "misc": ["perplexityStrings"]
 }
