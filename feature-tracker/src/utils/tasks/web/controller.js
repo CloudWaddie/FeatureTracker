@@ -14,6 +14,9 @@ import claudeStringsController from './claudeStrings/controller.js';
 import claudeInternalStringsController from './claudeInternalStrings/controller.js';
 import geminiButtonsController from './geminiButtons/controller.js';
 import geminiModelsController from './geminiModels/controller.js';
+import deepseekModelsController from './deepseekModels/controller.js';
+import openaiModelsController from './openaiModels/controller.js';
+import anthropicModelsController from './anthropicModels/controller.js';
 
 const controllers = [
     sitemapController,
@@ -23,7 +26,10 @@ const controllers = [
     geminiValuesController,
     geminiPreferencesController,
     geminiButtonsController,
-    geminiModelsController
+    geminiModelsController,
+    deepseekModelsController,
+    openaiModelsController,
+    anthropicModelsController
 ];
 
 const runIndividually = [

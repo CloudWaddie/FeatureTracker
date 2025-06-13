@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
     Table,
     TableBody,
@@ -14,30 +14,96 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 
+const API_ENDPOINTS = {
+    lmarena: '/api/db/getModels',
+    gemini: '/api/db/getGeminiApiModels',
+    chatgpt: '/api/db/getChatgptApiModels',
+    anthropic: '/api/db/getAnthropicApiModels',
+    deepseek: '/api/db/getDeepseekApiModels',
+};
+
+// FIELD_HEADER_MAP: Maps raw API field names to display properties
+// header: Human-readable column title
+// isAdvanced: Boolean, true if column should only be shown when 'showMoreInfo' is checked
+const FIELD_HEADER_MAP = {
+    // LMArena specific (assuming current structure)
+    'name': { header: 'Name', isAdvanced: false }, // Note: Gemini raw 'name' is different, 'displayName' is better
+    'provider': { header: 'Provider', isAdvanced: false },
+    'id': { header: 'ID', isAdvanced: false }, // Common, but LMArena 'id' might be different from API 'id'
+    'modelApiId': { header: 'Model API ID', isAdvanced: true },
+    'publicId': { header: 'Public ID', isAdvanced: true },
+    'providerId': { header: 'Provider ID', isAdvanced: true },
+    'multiModal': { header: 'Multi Modal', isAdvanced: true },
+    'supportsStructuredOutput': { header: 'Supports Structured Output', isAdvanced: true },
+    'baseSampleWeight': { header: 'Base Sample Weight', isAdvanced: true },
+    'isPrivate': { header: 'Is Private', isAdvanced: true },
+    'newModel': { header: 'New Model', isAdvanced: true },
+
+    // Gemini specific (from raw API structure)
+    // 'name' from Gemini raw is like "models/gemini-pro" - might prefer 'displayName'
+    'displayName': { header: 'Display Name', isAdvanced: false },
+    'version': { header: 'Version', isAdvanced: false },
+    'description': { header: 'Description', isAdvanced: true },
+    'inputTokenLimit': { header: 'Input Tokens', isAdvanced: true },
+    'outputTokenLimit': { header: 'Output Tokens', isAdvanced: true },
+    'supportedGenerationMethods': { header: 'Gen Methods', isAdvanced: true },
+    'temperature': { header: 'Temp', isAdvanced: true },
+    'topP': { header: 'Top P', isAdvanced: true },
+    'topK': { header: 'Top K', isAdvanced: true },
+
+    // Anthropic specific
+    'display_name': { header: 'Name', isAdvanced: false }, // Map to 'Name' for consistency
+    'created_at': { header: 'Created At', isAdvanced: true },
+    // 'id' is common, 'type' might be advanced if needed: { header: 'Type', isAdvanced: true},
+
+    // OpenAI & Deepseek specific
+    'owned_by': { header: 'Owned By', isAdvanced: true },
+    'created': { header: 'Created Timestamp', isAdvanced: true } // OpenAI
+    // 'object': { header: 'Object Type', isAdvanced: true } // e.g. "model", "list"
+};
+
+
 export default function ModelChecker() {
     const [models, setModels] = useState([]);
     const [allFetchedModels, setAllFetchedModels] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [showMoreInfo, setShowMoreInfo] = useState(false);
-    const [dataSource, setDataSource] = useState('lmarena'); // 'lmarena' or 'gemini'
+    const [dataSource, setDataSource] = useState('lmarena');
     const [isLoading, setIsLoading] = useState(false);
+    const [activeColumnHeaders, setActiveColumnHeaders] = useState([]);
 
     useEffect(() => {
         async function fetchModelsData() {
             setIsLoading(true);
-            let endpoint = '/api/db/getModels'; // Default to LMArena (existing models table)
-            if (dataSource === 'gemini') {
-                endpoint = '/api/db/getGeminiApiModels';
-            }
+            setModels([]);
+            setAllFetchedModels([]);
+            setActiveColumnHeaders([]);
+
+            const endpoint = API_ENDPOINTS[dataSource] || '/api/db/getModels';
             try {
                 const response = await fetch(endpoint);
                 if (!response.ok) {
                     throw new Error(`Network response was not ok from ${endpoint}`);
                 }
                 const data = await response.json();
-                const sortedData = Array.isArray(data) ? data.sort((a, b) => (a.name || '').localeCompare(b.name || '')) : [];
-                setAllFetchedModels(sortedData);
-                setModels(sortedData);
+                
+                if (Array.isArray(data) && data.length > 0) {
+                    // Determine column headers from the first item, maintaining its order
+                    const firstItemKeys = Object.keys(data[0]);
+                    setActiveColumnHeaders(firstItemKeys);
+
+                    // Sort data by 'name', 'displayName', or 'id' if available
+                    const sortedData = [...data].sort((a, b) => {
+                        const nameA = a.name || a.displayName || a.display_name || a.id || '';
+                        const nameB = b.name || b.displayName || b.display_name || b.id || '';
+                        return String(nameA).localeCompare(String(nameB));
+                    });
+                    setAllFetchedModels(sortedData);
+                    setModels(sortedData);
+                } else {
+                    setAllFetchedModels([]);
+                    setModels([]);
+                }
             } catch (error) {
                 console.error("Failed to fetch models:", error);
                 setAllFetchedModels([]);
@@ -47,11 +113,11 @@ export default function ModelChecker() {
             }
         }
         fetchModelsData();
-    }, [dataSource]); // Refetch when dataSource changes
+    }, [dataSource]);
 
     const handleDataSourceChange = (value) => {
         setDataSource(value);
-        setSearchTerm(''); // Clear search term when changing data source
+        setSearchTerm('');
     };
 
     const handleSearchTermChange = (e) => {
@@ -59,7 +125,7 @@ export default function ModelChecker() {
         setSearchTerm(newSearchTerm);
 
         if (newSearchTerm === '') {
-            setModels(allFetchedModels.sort((a, b) => (a.name || '').localeCompare(b.name || '')));
+            setModels(allFetchedModels);
         } else {
             const lowerCaseSearchTerm = newSearchTerm.toLowerCase();
             const filtered = allFetchedModels.filter(model => {
@@ -70,20 +136,16 @@ export default function ModelChecker() {
                 }
                 return false;
             });
-            setModels(filtered.sort((a, b) => (a.name || '').localeCompare(b.name || '')));
+            setModels(filtered);
         }
     };
-
-    const geminiSpecificHeaders = [
-        { key: 'version', label: 'Version' },
-        { key: 'description', label: 'Description' },
-        { key: 'inputTokenLimit', label: 'Input Tokens' },
-        { key: 'outputTokenLimit', label: 'Output Tokens' },
-        { key: 'supportedGenerationMethods', label: 'Gen Methods' },
-        { key: 'temperature', label: 'Temp' },
-        { key: 'topP', label: 'Top P' },
-        { key: 'topK', label: 'Top K' },
-    ];
+    
+    const visibleColumnHeaders = useMemo(() => {
+        if (!showMoreInfo) {
+            return activeColumnHeaders.filter(key => !FIELD_HEADER_MAP[key]?.isAdvanced);
+        }
+        return activeColumnHeaders;
+    }, [activeColumnHeaders, showMoreInfo]);
 
     return (
         <div className="flex flex-col items-center justify-start min-h-screen pt-10 px-4">
@@ -99,6 +161,9 @@ export default function ModelChecker() {
                         <SelectContent>
                             <SelectItem value="lmarena">LMArena Models</SelectItem>
                             <SelectItem value="gemini">Gemini API Models</SelectItem>
+                            <SelectItem value="chatgpt">ChatGPT API Models</SelectItem>
+                            <SelectItem value="anthropic">Anthropic API Models</SelectItem>
+                            <SelectItem value="deepseek">Deepseek API Models</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
@@ -128,46 +193,26 @@ export default function ModelChecker() {
 
             {isLoading && <p className="mt-6 text-gray-600">Loading models...</p>}
 
-            {!isLoading && models.length > 0 && (
+            {!isLoading && models.length > 0 && visibleColumnHeaders.length > 0 && (
                 <div className="w-full mt-6 mx-auto overflow-x-auto">
                     <h2 className="text-2xl font-semibold mb-3 text-center">Search Results</h2>
                     <Table>
                         <TableCaption>{models.length} model(s) found.</TableCaption>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Name</TableHead>
-                                {dataSource === 'lmarena' && <TableHead>Provider</TableHead>}
-                                <TableHead>ID</TableHead>
-                                {showMoreInfo && dataSource === 'lmarena' && <TableHead>Model API ID</TableHead>}
-                                {showMoreInfo && dataSource === 'lmarena' && <TableHead>Public ID</TableHead>}
-                                {showMoreInfo && dataSource === 'lmarena' &&  <TableHead>Provider ID</TableHead>}
-                                {showMoreInfo && <TableHead>Multi Modal</TableHead>}
-                                {showMoreInfo && dataSource === 'lmarena' &&  <TableHead>Supports Structured Output</TableHead>}
-                                {showMoreInfo && dataSource === 'lmarena' &&  <TableHead>Base Sample Weight</TableHead>}
-                                {showMoreInfo && dataSource === 'lmarena' && <TableHead>Is Private</TableHead>}
-                                {showMoreInfo && dataSource === 'lmarena' && <TableHead>New Model</TableHead>}
-                                {showMoreInfo && dataSource === 'gemini' && geminiSpecificHeaders.map(header => (
-                                    <TableHead key={header.key}>{header.label}</TableHead>
+                                {visibleColumnHeaders.map(key => (
+                                    <TableHead key={key}>
+                                        {FIELD_HEADER_MAP[key]?.header || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                    </TableHead>
                                 ))}
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {models.map((model, index) => (
-                                <TableRow key={model.id || model.name || `model-${index}`}>
-                                    <TableCell>{model.name || 'N/A'}</TableCell>
-                                    {dataSource === 'lmarena' && <TableCell>{model.provider || 'N/A'}</TableCell>}
-                                    <TableCell>{model.id || 'N/A'}</TableCell>
-                                    {showMoreInfo && dataSource === 'lmarena' && <TableCell>{model.modelApiId || 'N/A'}</TableCell>}
-                                    {showMoreInfo && dataSource === 'lmarena' && <TableCell>{model.publicId || 'N/A'}</TableCell>}
-                                    {showMoreInfo && dataSource === 'lmarena' &&  <TableCell>{model.providerId || 'N/A'}</TableCell>}
-                                    {showMoreInfo && <TableCell>{typeof model.multiModal === 'boolean' ? (model.multiModal ? 'Yes' : 'No') : 'N/A'}</TableCell>}
-                                    {showMoreInfo && dataSource === 'lmarena' &&  <TableCell>{typeof model.supportsStructuredOutput === 'boolean' ? (model.supportsStructuredOutput ? 'Yes' : 'No') : 'N/A'}</TableCell>}
-                                    {showMoreInfo && dataSource === 'lmarena' && <TableCell>{model.baseSampleWeight || 'N/A'}</TableCell>}
-                                    {showMoreInfo && dataSource === 'lmarena' && <TableCell>{typeof model.isPrivate === 'boolean' ? (model.isPrivate ? 'Yes' : 'No') : 'N/A'}</TableCell>}
-                                    {showMoreInfo && dataSource === 'lmarena' && <TableCell>{typeof model.newModel === 'boolean' ? (model.newModel ? 'Yes' : 'No') : 'N/A'}</TableCell>}
-                                    {showMoreInfo && dataSource === 'gemini' && geminiSpecificHeaders.map(header => (
-                                        <TableCell key={header.key}>
-                                            {Array.isArray(model[header.key]) ? model[header.key].join(', ') : (model[header.key] !== undefined && model[header.key] !== null ? String(model[header.key]) : 'N/A')}
+                                <TableRow key={model.id || model.name || `model-${index}-${dataSource}`}>
+                                    {visibleColumnHeaders.map(key => (
+                                        <TableCell key={`${key}-${index}`}>
+                                            {Array.isArray(model[key]) ? model[key].join(', ') : (model[key] !== undefined && model[key] !== null ? String(model[key]) : 'N/A')}
                                         </TableCell>
                                     ))}
                                 </TableRow>
@@ -179,8 +224,8 @@ export default function ModelChecker() {
             {!isLoading && models.length === 0 && searchTerm && (
                  <p className="mt-6 text-gray-600">No models found matching your search term.</p>
             )}
-            {!isLoading && models.length === 0 && !searchTerm && (
-                 <p className="mt-6 text-gray-600">No models available for the selected source.</p>
+            {!isLoading && (models.length === 0 || visibleColumnHeaders.length === 0) && !searchTerm && (
+                 <p className="mt-6 text-gray-600">No models or displayable columns available for the selected source.</p>
             )}
         </div>
     );
