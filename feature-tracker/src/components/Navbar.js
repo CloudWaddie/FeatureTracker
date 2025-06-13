@@ -57,7 +57,7 @@ export default function Navbar() {
                         <AccordionItem value="item-1">
                           <AccordionTrigger>Why did I make this?</AccordionTrigger>
                           <AccordionContent>
-                            I made this app to help developers and users keep track of the features being added to AI applications. It provides a simple and effective way to see what's new and what has changed in real-time.
+                            I made this app to help developers and users keep track of the features being added to AI applications. It provides a simple and effective way to see what&apos;s new and what has changed in real-time.
                           </AccordionContent>
                         </AccordionItem>
                         <AccordionItem value="item-2">

@@ -61,7 +61,7 @@ export default function RootLayout({ children }) {
                     <div className="space-y-1">
                       <h4 className="text-sm font-semibold">@cloudwaddie</h4>
                       <p className="text-sm">
-                        Hi! I'm CloudWaddie, a passionate developer and AI enthusiast. I love building tools that make life easier and more fun.
+                        Hi! I&apos;m CloudWaddie, a passionate developer and AI enthusiast. I love building tools that make life easier and more fun.
                       </p>
                       <div className="flex items-center pt-2">
                         <span className="text-xs text-muted-foreground">
