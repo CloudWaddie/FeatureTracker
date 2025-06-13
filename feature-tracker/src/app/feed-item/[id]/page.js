@@ -2,20 +2,18 @@
 
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useParams } from 'next/navigation';
-import { typeDisplayNameMap } from '../../consts'; // Adjusted path
-import { Autolinker } from 'autolinker';
-import DOMPurify from 'dompurify';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+// typeDisplayNameMap will be used by FeedCard, which imports it from @/app/consts
+// Autolinker and DOMPurify are used by FeedCard
+import FeedCard from '@/components/FeedCard'; // Import the FeedCard component
+import BetaChatView from '@/components/BetaUIView'; // Corrected import path
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useFeatureFlagEnabled } from 'posthog-js/react';
 
 function FeedItemDetailContent() {
   const params = useParams();
+  const [activeUITab, setActiveUITab] = useState("standard"); // 'standard' or 'beta'
+  const betaUiFeatureEnabled = useFeatureFlagEnabled('beta-ui'); // PostHog feature flag
+  const aiSummariesEnabled = true; // Assuming this is globally enabled for consistency
   const { id } = params;
   const [feedItem, setFeedItem] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -48,39 +46,35 @@ function FeedItemDetailContent() {
   if (error) return <div className="flex justify-center items-center min-h-screen"><p>Error loading feed item: {error}</p></div>;
   if (!feedItem) return <div className="flex justify-center items-center min-h-screen"><p>Feed item not found.</p></div>;
 
-  const typeDisplayName = typeDisplayNameMap[feedItem.type] || feedItem.type;
+  // const typeDisplayName = typeDisplayNameMap[feedItem.type] || feedItem.type; // This logic is now within FeedCard
 
   return (
-    <div className="container mx-auto p-4 min-h-screen flex flex-col justify-center items-center">
-      <Card className="w-full md:w-3/4 lg:w-2/3 max-w-4xl mx-auto"> {/* Responsive card with proportional and max width */}
-        <CardHeader>
-          <CardTitle>{typeDisplayName}</CardTitle>
-          <CardDescription>{feedItem.appId}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {feedItem.type === 'strings' ? (
-            feedItem.details.split('\n').map((line, index) => {
-              let style = { whiteSpace: 'pre-wrap' };
-              if (line.startsWith('+')) {
-                style.color = 'green';
-              } else if (line.startsWith('-')) {
-                style.color = 'red';
-              }
-              const linkedContent = Autolinker.link(line, {
-                newWindow: true,
-                className: 'text-blue-500 hover:underline',
-                truncate: { length: 50, location: 'smart' }
-              });
-              return <div key={index} style={style} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(linkedContent) }} />;
-            })
-          ) : (
-            <div style={{ whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(Autolinker.link(feedItem.details, { newWindow: true, className: 'text-blue-500 hover:underline', truncate: { length: 50, location: 'smart' }})) }} />
-          )}
-        </CardContent>
-        <CardFooter>
-          <p className='text-muted-foreground text-sm'>{new Date(feedItem.date).toLocaleString()}</p>
-        </CardFooter>
-      </Card>
+    <div className="container mx-auto p-4">
+      {betaUiFeatureEnabled && (
+        <Tabs value={activeUITab} onValueChange={setActiveUITab} className="mb-4">
+          <TabsList>
+            <TabsTrigger value="standard">Feed Item Detail</TabsTrigger>
+            <TabsTrigger value="beta">Beta UI</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      )}
+
+      {(!betaUiFeatureEnabled || activeUITab === "standard") && (
+        <div className="flex flex-col items-center"> {/* Centering container for the card */}
+          <div className="w-full md:w-3/4 lg:w-2/3 max-w-4xl"> {/* Responsive width container */}
+            <FeedCard
+              update={feedItem}
+              lastSeenHighestId={feedItem.id} // Pass feedItem.id to ensure "New" badge doesn't show
+              aiSummariesEnabled={aiSummariesEnabled}
+              isDetailView={true} // Indicate this is the detail view
+            />
+          </div>
+        </div>
+      )}
+
+      {betaUiFeatureEnabled && activeUITab === "beta" && (
+        <BetaChatView />
+      )}
     </div>
   );
 }

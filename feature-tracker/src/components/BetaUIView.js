@@ -1,11 +1,13 @@
-// src/components/chat/BetaChatView.js
+// src/components/BetaUIView.js
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card"; // Assuming these are used for item display
+// Card, CardHeader, etc. are now part of FeedCard
+import FeedCard from '@/components/FeedCard'; // Import the FeedCard component
 import { typeDisplayNameMap, categoryDisplayNameMap } from '@/app/consts'; // For displaying item types and category names
 
-export default function BetaChatView() {
+export default function BetaUIView() {
+  const aiSummariesEnabled = true; // Assuming this is globally enabled for consistency
   const [groupingConfig, setGroupingConfig] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [feedItems, setFeedItems] = useState([]);
@@ -164,38 +166,21 @@ export default function BetaChatView() {
       <div className="flex-1 p-6 overflow-y-auto">
         {selectedCategory ? (
           <>
-            <h3 className="text-2xl font-bold mb-6">{groupingConfig[selectedCategory] ? (categoryDisplayNameMap[selectedCategory] || selectedCategory) : 'Unknown Category'}</h3>
             {loadingItems && <p className="text-center">Loading items...</p>}
             {!loadingItems && feedItems.length === 0 && <p className="text-center text-muted-foreground">No items to display for this category.</p>}
             
             {!loadingItems && feedItems.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {feedItems.map(item => {
-                  const typeDisplayName = typeDisplayNameMap[item.type] || item.type;
-                  return (
-                    <Card key={item.id} className="flex flex-col">
-                      <CardHeader>
-                        <Link href={`/feed-item/${item.id}`} passHref>
-                          <CardTitle className="cursor-pointer hover:underline">{typeDisplayName}</CardTitle>
-                        </Link>
-                        <p className="text-sm text-muted-foreground">{item.appId}</p>
-                      </CardHeader>
-                      <CardContent className="flex-grow">
-                        <p className="text-sm break-words whitespace-pre-wrap">
-                          {item.details.length > 150 ? `${item.details.substring(0, 150)}...` : item.details}
-                          {item.details.length > 150 && (
-                            <Link href={`/feed-item/${item.id}`} passHref>
-                              <span className="text-blue-500 hover:underline cursor-pointer ml-1">Show more</span>
-                            </Link>
-                          )}
-                        </p>
-                      </CardContent>
-                      <CardFooter>
-                        <p className='text-xs text-muted-foreground'>{new Date(item.date).toLocaleString()}</p>
-                      </CardFooter>
-                    </Card> 
-                  );
-                })}
+                {feedItems.map(item => (
+                  <FeedCard
+                    key={item.id}
+                    update={item}
+                    // Pass item.id as lastSeenHighestId to ensure "New" badge on card doesn't show,
+                    // as newness is handled at the category level in Beta UI.
+                    lastSeenHighestId={item.id} 
+                    aiSummariesEnabled={aiSummariesEnabled}
+                  />
+                ))}
               </div>
             )}
           </>
