@@ -3,10 +3,12 @@
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import BetaChatView from '@/components/chat/BetaChatView'; // Import BetaChatView
 import { typeDisplayNameMap, FEED_ITEM_SUMMARY_LENGTH } from './consts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Import Tabs components
 import { Badge } from '@/components/ui/badge';
 import { Autolinker } from 'autolinker';
 import DOMPurify from 'dompurify';
@@ -22,7 +24,14 @@ import { CardSkeleton } from "@/components/ui/card-skeleton";
 import { SparkleButton } from "@/components/ui/sparkle-button";
 import { useFeatureFlagEnabled } from 'posthog-js/react'
 
+// Placeholder for BetaChatView until it's created
+// const BetaChatView = () => <div>Beta Chat UI Placeholder</div>; 
+
 function PageContent() {
+  const [activeUITab, setActiveUITab] = useState("standard"); // 'standard' or 'beta'
+  const betaUiFeatureEnabled = useFeatureFlagEnabled('beta-ui'); // PostHog feature flag
+
+  // const [showBetaChatUi, setShowBetaChatUi] = useState(false); // State for Beta UI toggle - replaced by activeUITab
   const [updates, setUpdates] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -31,7 +40,8 @@ function PageContent() {
   const timeSince = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
   const searchParams = useSearchParams();
   const router = useRouter();
-  const aiSummariesEnabled = useFeatureFlagEnabled('ai-summaries')
+  const aiSummariesEnabled = true; // No more feature flag, always enabled for now
+
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
@@ -202,9 +212,20 @@ function PageContent() {
 
   return (
     <>
-      <div className="flex gap-4 mb-4 items-center">
-        <Input
-          type="text"
+      {betaUiFeatureEnabled && (
+        <Tabs value={activeUITab} onValueChange={setActiveUITab} className="mb-4">
+          <TabsList>
+            <TabsTrigger value="standard">Standard Feed</TabsTrigger>
+            <TabsTrigger value="beta">Beta Chat UI</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      )}
+
+      {(!betaUiFeatureEnabled || activeUITab === "standard") && (
+        <> {/* Standard Feed UI */}
+          <div className="flex gap-4 mb-4 items-center">
+            <Input
+              type="text"
           placeholder="Search..."
           value={searchQuery}
           onChange={handleSearchChange}
@@ -355,6 +376,12 @@ function PageContent() {
           Next Page
         </Button>
       </div>
+        </> // Closing fragment for standard feed UI
+      )}
+
+      {betaUiFeatureEnabled && activeUITab === "beta" && (
+        <BetaChatView />
+      )}
     </>
   );
 }

@@ -28,3 +28,13 @@ export const leaderboardTypeMap = {
   'copilot-overall-remove-style-control': 'Copilot Overall (Remove Style Controls)',
   'text-to-image-overall-remove-style-control': 'Text-to-Image Overall (Remove Style Controls)'
 };
+
+export const categoryDisplayNameMap = {
+  'appUpdates': 'App Updates',
+  'openai': 'OpenAI',
+  'anthropic': 'Anthropic',
+  'google': 'Google',
+  'web': 'Web',
+  'models': 'Models',
+  'misc': 'Miscellaneous'
+};
