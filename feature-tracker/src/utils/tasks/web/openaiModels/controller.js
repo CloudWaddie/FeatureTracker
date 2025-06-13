@@ -19,7 +19,16 @@ export default async function openaiModelsController() {
         logger.info('Updated chatgpt models in the database');
         return;
     }
-    oldModels = oldModels[0].value ? JSON.parse(oldModels[0].value) : null;
+    if (oldModels[0].value) {
+        try {
+            oldModels = JSON.parse(oldModels[0].value);
+        } catch (error) {
+            logger.error(`Failed to parse old models JSON: ${error.message}`);
+            oldModels = null;
+        }
+    } else {
+        oldModels = null;
+    }
     // If the old models are empty, we need to update them
     // Not empty so find additions and removals
     const newModels = models.data.filter(model => !oldModels.data.some(oldModel => oldModel.id === model.id));

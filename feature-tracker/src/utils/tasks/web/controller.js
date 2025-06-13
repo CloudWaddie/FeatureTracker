@@ -29,8 +29,7 @@ const controllers = [
     geminiModelsController,
     deepseekModelsController,
     openaiModelsController,
-    anthropicModelsController,
-    deepseekModelsController
+    anthropicModelsController
 ];
 
 const runIndividually = [
