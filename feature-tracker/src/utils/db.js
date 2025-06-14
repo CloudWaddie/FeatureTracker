@@ -62,7 +62,7 @@ async function getDb() {
     return initializeDbConnection();
 }
 
-export async function getFeed(page = 1, showHidden = false, searchQuery = null, filterType = null) {
+export async function getFeed(page = 1, showHidden = false, searchQuery = null, filterType = null, typesArray = null) { // Added typesArray
     const currentDb = await getDb();
     if (!currentDb) throw new Error("Database connection not available.");
     return new Promise((resolve, reject) => {
@@ -74,10 +74,14 @@ export async function getFeed(page = 1, showHidden = false, searchQuery = null, 
         if (!showHidden) {
             conditions.push("(isHidden = 0)");
         } else {
-            conditions.push("(isHidden = 1 OR isHidden = 0)"); // Or simply don't add isHidden to conditions if showHidden means show all
+            conditions.push("(isHidden = 1 OR isHidden = 0)"); 
         }
 
-        if (filterType) {
+        if (typesArray && typesArray.length > 0) { // Handle typesArray first
+            const placeholders = typesArray.map(() => '?').join(',');
+            conditions.push(`type IN (${placeholders})`);
+            params.push(...typesArray);
+        } else if (filterType) { // Fallback to filterType if typesArray is not provided or empty
             if (Array.isArray(filterType) && filterType.length > 0) {
                 const placeholders = filterType.map(() => '?').join(',');
                 conditions.push(`type IN (${placeholders})`);
@@ -103,10 +107,31 @@ export async function getFeed(page = 1, showHidden = false, searchQuery = null, 
 
         currentDb.all(query, params, (err, rows) => {
             if (err) {
-                logger.error({ err, query, params }, "Error fetching feed");
+                logger.error({ err, query, params, typesArray }, "Error fetching feed"); // Added typesArray to log
                 reject(err);
             } else {
                 resolve(rows);
+            }
+        });
+    });
+}
+
+// New function to get latest item IDs per type
+export async function getLatestItemIdsPerType() {
+    const currentDb = await getDb();
+    if (!currentDb) throw new Error("Database connection not available.");
+    return new Promise((resolve, reject) => {
+        const query = "SELECT type, MAX(id) as maxId FROM feed GROUP BY type";
+        currentDb.all(query, [], (err, rows) => {
+            if (err) {
+                logger.error({ err, query }, "Error fetching latest item IDs per type");
+                reject(err);
+            } else {
+                const result = {};
+                rows.forEach(row => {
+                    result[row.type] = row.maxId;
+                });
+                resolve(result);
             }
         });
     });
@@ -231,7 +256,11 @@ export async function getTotalPages(showHidden, searchQuery = null, filterType =
             conditions.push("(isHidden = 1 OR isHidden = 0)");
         }
 
-        if (filterType) {
+        // Note: getTotalPages might also need to consider typesArray if pagination in BetaUIView becomes complex.
+        // For now, assuming BetaUIView fetches all items for a category (or a single page of them)
+        // and pagination within BetaUIView content area would be a separate concern if needed later.
+        // If BetaUIView needs paginated results for its content area, then typesArray should be handled here too.
+        if (filterType) { // Existing filterType logic
             if (Array.isArray(filterType) && filterType.length > 0) {
                 const placeholders = filterType.map(() => '?').join(',');
                 conditions.push(`type IN (${placeholders})`);
@@ -241,7 +270,7 @@ export async function getTotalPages(showHidden, searchQuery = null, filterType =
                 params.push(filterType);
             }
         }
-
+        
         if (searchQuery) {
             conditions.push("(details LIKE ? OR appId LIKE ? OR type LIKE ?)");
             const searchTerm = `%${searchQuery}%`;

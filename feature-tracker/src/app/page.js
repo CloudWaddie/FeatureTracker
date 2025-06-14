@@ -3,26 +3,29 @@
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import BetaUIView from '@/components/BetaUIView'; // Import BetaUIView
 import { typeDisplayNameMap, FEED_ITEM_SUMMARY_LENGTH } from './consts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
+// Tabs are no longer used here
 import { Autolinker } from 'autolinker';
 import DOMPurify from 'dompurify';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { CardSkeleton } from "@/components/ui/card-skeleton";
-import { SparkleButton } from "@/components/ui/sparkle-button";
-import { useFeatureFlagEnabled } from 'posthog-js/react'
+// Card components are now in FeedCard
+// SparkleButton and Badge are used within FeedCard or still needed if other parts use them.
+// For now, assume SparkleButton and Badge are primarily for the card, if not, they'd be re-imported or kept.
+// import { useFeatureFlagEnabled } from 'posthog-js/react'; // No longer needed here for UI switching
+import FeedCard from '@/components/FeedCard'; // Import the new FeedCard component
+
+// Placeholder for BetaUIView until it's created
+// const BetaUIView = () => <div>Beta UI Placeholder</div>; 
 
 function PageContent() {
+  const [showBetaUI, setShowBetaUI] = useState(false);
+  const [isClient, setIsClient] = useState(false); // To ensure localStorage is accessed only on client
+
+  // const [showBetaChatUi, setShowBetaChatUi] = useState(false); // State for Beta UI toggle - replaced by activeUITab
   const [updates, setUpdates] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -31,7 +34,8 @@ function PageContent() {
   const timeSince = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
   const searchParams = useSearchParams();
   const router = useRouter();
-  const aiSummariesEnabled = useFeatureFlagEnabled('ai-summaries')
+  const aiSummariesEnabled = true; // No more feature flag, always enabled for now
+
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
@@ -40,6 +44,16 @@ function PageContent() {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [lastSeenHighestId, setLastSeenHighestId] = useState(null);
   const [currentSessionHighestId, setCurrentSessionHighestId] = useState(null);
+
+  // Effect to read localStorage for Beta UI preference
+  useEffect(() => {
+    setIsClient(true); // Component has mounted
+    const betaPreference = localStorage.getItem('enableBetaUI');
+    if (betaPreference) {
+      setShowBetaUI(JSON.parse(betaPreference));
+    }
+  }, []);
+
 
   // Debounce search query
   useEffect(() => {
@@ -202,9 +216,14 @@ function PageContent() {
 
   return (
     <>
-      <div className="flex gap-4 mb-4 items-center">
-        <Input
-          type="text"
+      {/* Conditional rendering based on showBetaUI state */}
+      {isClient && showBetaUI ? (
+        <BetaUIView />
+      ) : (
+        <> {/* Standard Feed UI */}
+          <div className="flex gap-4 mb-4 items-center">
+            <Input
+              type="text"
           placeholder="Search..."
           value={searchQuery}
           onChange={handleSearchChange}
@@ -229,109 +248,14 @@ function PageContent() {
             <CardSkeleton key={`loading-${index}`} />
           ))
         ) : (
-          updates.filter(update => !update.isHidden).map((update) => { // Original filter for isHidden is kept client-side for now
-            const typeDisplayName = typeDisplayNameMap[update.type] || update.type;
-            // Show badge if: no stored value (first time) OR item ID is higher than stored value
-            const isNewItem = lastSeenHighestId === null || update.id > lastSeenHighestId;
-            return (
-              <Card key={update.id}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <Link href={`/feed-item/${update.id}`} passHref>
-                      <CardTitle className="cursor-pointer hover:underline">{typeDisplayName}</CardTitle>
-                    </Link>
-                    <div className="flex items-center gap-2">
-                      {aiSummariesEnabled && (
-                        <SparkleButton 
-                          summary={update.summary} 
-                          itemType={typeDisplayName}
-                          itemId={update.id}
-                        />
-                      )}
-                      {isNewItem && (
-                        <Badge variant="default">
-                          New
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                  <CardDescription>{update.appId}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {update.type === 'strings' ? (() => {
-                    const details = update.details;
-                    const lines = details.split('\n');
-                    let contentToShow = [];
-                    let needsTruncationLink = false;
-                    const isLong = details.length > FEED_ITEM_SUMMARY_LENGTH;
-
-                    if (isLong) {
-                      needsTruncationLink = true;
-                      let accumulatedChars = 0;
-                      for (let i = 0; i < lines.length; i++) {
-                        const line = lines[i];
-                        const lineLengthWithPotentialNewline = line.length + (i < lines.length - 1 ? 1 : 0);
-
-                        if (accumulatedChars + lineLengthWithPotentialNewline <= FEED_ITEM_SUMMARY_LENGTH) {
-                          contentToShow.push(line);
-                          accumulatedChars += lineLengthWithPotentialNewline;
-                        } else {
-                          const remainingChars = FEED_ITEM_SUMMARY_LENGTH - accumulatedChars;
-                          if (remainingChars > 0) {
-                            contentToShow.push(line.substring(0, remainingChars) + "...");
-                          } else if (contentToShow.length > 0 && !contentToShow[contentToShow.length - 1].endsWith("...")) {
-                             contentToShow[contentToShow.length - 1] = contentToShow[contentToShow.length - 1] + "...";
-                          } else if (contentToShow.length === 0) { 
-                              contentToShow.push(line.substring(0, FEED_ITEM_SUMMARY_LENGTH) + "...");
-                          }
-                          break;
-                        }
-                      }
-                    } else {
-                      contentToShow = lines;
-                    }
-
-                    return (
-                      <>
-                        {contentToShow.map((lineContent, idx) => {
-                          const originalLineForStyle = lines[idx] || "";
-                          let style = {};
-                          if (originalLineForStyle.startsWith('+')) style.color = 'green';
-                          else if (originalLineForStyle.startsWith('-')) style.color = 'red';
-                          const linkedContent = Autolinker.link(lineContent, {
-                            newWindow: true,
-                            className: 'text-blue-500 hover:underline',
-                            truncate: { length: 50, location: 'smart' }
-                          });
-                          return <div key={idx} style={style} className="break-words whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(linkedContent) }} />;
-                        })}
-                        {needsTruncationLink && (
-                          <Link href={`/feed-item/${update.id}`} passHref>
-                            <span className="text-gray-500 hover:underline cursor-pointer">Show more...</span>
-                          </Link>
-                        )}
-                      </>
-                    );
-                  })() : (
-                    // Original logic for non-'strings' type
-                    update.details.length > FEED_ITEM_SUMMARY_LENGTH ? (
-                      <>
-                        <div className="break-words whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(Autolinker.link(update.details.substring(0, FEED_ITEM_SUMMARY_LENGTH) + "...", { newWindow: true, className: 'text-blue-500 hover:underline', truncate: { length: 50, location: 'smart' }})) }} />
-                        <Link href={`/feed-item/${update.id}`} passHref>
-                          <span className="text-gray-500 hover:underline cursor-pointer">Show more...</span>
-                        </Link>
-                      </>
-                    ) : (
-                      <div className="break-words whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(Autolinker.link(update.details, { newWindow: true, className: 'text-blue-500 hover:underline', truncate: { length: 50, location: 'smart' }})) }} />
-                    )
-                  )}
-                </CardContent>
-                <CardFooter>
-                  <p className='text-muted-foreground text-sm'>{new Date(update.date).toLocaleString()}</p>
-                </CardFooter>
-              </Card> 
-            );
-          })
+          updates.filter(update => !update.isHidden).map((update) => (
+            <FeedCard
+              key={update.id}
+              update={update}
+              lastSeenHighestId={lastSeenHighestId}
+              aiSummariesEnabled={aiSummariesEnabled}
+            />
+          ))
         )}
       </div>
       <div className="flex justify-center space-x-4 mt-4">
@@ -355,6 +279,9 @@ function PageContent() {
           Next Page
         </Button>
       </div>
+        </> // Closing fragment for standard feed UI
+      )}
+      {/* The BetaUIView is now rendered above based on showBetaUI state */}
     </>
   );
 }
