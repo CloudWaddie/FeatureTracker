@@ -21,7 +21,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Info, Settings } from "lucide-react";
-import { useFeatureFlagEnabled } from 'posthog-js/react';
 import {
   Accordion,
   AccordionContent,
@@ -30,7 +29,6 @@ import {
 } from "@/components/ui/accordion";
 
 export default function Navbar() {
-  const betaUiFeatureEnabled = useFeatureFlagEnabled('beta-ui');
 
   return (
     <div className="sticky top-0 z-50 flex flex-col min-h-10 border-b border-solid border-white min-w-screen bg-gray-950">
@@ -91,7 +89,6 @@ export default function Navbar() {
         </div>
         <NavigationMenu>
           <NavigationMenuList className="flex flex-row gap-5 items-center">
-            {betaUiFeatureEnabled && (
               <NavigationMenuItem>
                 <Link href="/settings" legacyBehavior passHref>
                   <NavigationMenuLink className={navigationMenuTriggerStyle()}>
@@ -100,7 +97,6 @@ export default function Navbar() {
                   </NavigationMenuLink>
                 </Link>
               </NavigationMenuItem>
-            )}
             <NavigationMenuItem>
               <NavigationMenuTrigger>Models</NavigationMenuTrigger>
               <NavigationMenuContent align="end">
