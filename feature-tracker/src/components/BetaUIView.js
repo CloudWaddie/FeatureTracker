@@ -1,6 +1,6 @@
 // src/components/BetaUIView.js
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react'; // Added useRef
 import Link from 'next/link';
 // Card, CardHeader, etc. are now part of FeedCard
 import FeedCard from '@/components/FeedCard'; // Import the FeedCard component
@@ -15,6 +15,8 @@ export default function BetaUIView() {
   const [loadingConfig, setLoadingConfig] = useState(true); // For loading grouping config
   const [lastSeenIdsPerType, setLastSeenIdsPerType] = useState({});
   const [latestItemIdsFromApi, setLatestItemIdsFromApi] = useState({}); // To store results from /api/db/getLatestItemIdsPerType
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const previousSelectedCategoryRef = useRef(null); // Ref to store the previous category
 
   // Fetch grouping config
   useEffect(() => {
@@ -100,26 +102,39 @@ export default function BetaUIView() {
         localStorage.setItem('lastSeenIdsPerType', JSON.stringify(lastSeenIdsPerType));
     }
   }, [lastSeenIdsPerType]);
-  
-  const handleCategorySelect = (category) => {
-    setSelectedCategory(category);
-    // Mark items in this category as seen by updating lastSeenIdsPerType
-    if (groupingConfig && groupingConfig[category] && latestItemIdsFromApi) {
-      const typesInClickedCategory = groupingConfig[category];
-      const newLastSeenIds = { ...lastSeenIdsPerType };
-      let changed = false;
-  
-      typesInClickedCategory.forEach(type => {
-        if (latestItemIdsFromApi[type] && (newLastSeenIds[type] !== latestItemIdsFromApi[type])) {
-           newLastSeenIds[type] = latestItemIdsFromApi[type]; // Update to the true latest ID from API
-           changed = true;
+
+  // Effect to mark items of the *previous* category as seen when selectedCategory changes
+  useEffect(() => {
+    const previousCategory = previousSelectedCategoryRef.current;
+
+    if (previousCategory && previousCategory !== selectedCategory) {
+      if (groupingConfig && groupingConfig[previousCategory] && latestItemIdsFromApi) {
+        const typesInPreviousCategory = groupingConfig[previousCategory];
+        const newLastSeenIds = { ...lastSeenIdsPerType };
+        let changed = false;
+
+        typesInPreviousCategory.forEach(type => {
+          if (latestItemIdsFromApi[type] && (newLastSeenIds[type] !== latestItemIdsFromApi[type])) {
+            newLastSeenIds[type] = latestItemIdsFromApi[type]; // Update to the true latest ID
+            changed = true;
+          }
+        });
+
+        if (changed) {
+          setLastSeenIdsPerType(newLastSeenIds);
         }
-      });
-  
-      if (changed) {
-        setLastSeenIdsPerType(newLastSeenIds);
       }
     }
+    // Update the ref to the current selected category for the next run
+    previousSelectedCategoryRef.current = selectedCategory;
+  }, [selectedCategory, groupingConfig, latestItemIdsFromApi, lastSeenIdsPerType, setLastSeenIdsPerType]);
+  
+  const handleCategorySelect = (category) => {
+    setSelectedCategory(category); // This will trigger the useEffect above to handle marking previous category's items as seen
+    if (window.innerWidth < 768) { // md breakpoint in Tailwind
+      setIsSidebarOpen(false); // Close sidebar on mobile after selection
+    }
+    // The logic to immediately mark items as seen has been moved to the useEffect above.
   };
 
   const hasNewItems = useCallback((categoryName) => {
@@ -142,10 +157,45 @@ export default function BetaUIView() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-150px)] bg-background"> {/* Adjust height as needed, consider header/nav height */}
+    <div className="relative flex h-[calc(100vh-150px)] bg-background rounded-lg overflow-hidden"> {/* Added rounded-lg and overflow-hidden, relative for absolute sidebar */}
+      {/* Hamburger Menu Button - visible only on small screens when sidebar is closed */}
+      <button 
+        onClick={() => setIsSidebarOpen(true)} 
+        className={`${isSidebarOpen ? 'hidden' : 'block'} md:hidden p-2 m-2 absolute top-0 left-0 z-30 bg-primary text-primary-foreground rounded-md`}
+        aria-label="Open sidebar"
+      >
+        {/* Simple hamburger icon */}
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+        </svg>
+      </button>
+
       {/* Sidebar */}
-      <div className="w-64 border-r border-border p-4 overflow-y-auto bg-muted/40">
-        <h2 className="text-lg font-semibold mb-4">Categories</h2>
+      {/* Base classes for sidebar, conditional classes for mobile toggle */}
+      <div 
+        className={`
+          ${isSidebarOpen ? 'block' : 'hidden'} md:block 
+          absolute md:relative z-20 md:z-auto /* Adjusted z-index */
+          w-64 h-full md:h-auto 
+          bg-muted border-r border-border 
+          p-4 overflow-y-auto 
+          transition-transform duration-300 ease-in-out 
+          md:translate-x-0 
+          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+          rounded-r-lg md:rounded-r-none md:rounded-l-lg 
+        `}
+      >
+        {/* Close button inside sidebar for mobile */}
+        <button
+          onClick={() => setIsSidebarOpen(false)}
+          className="md:hidden absolute top-2 right-2 p-1 text-muted-foreground hover:text-foreground z-30" /* Ensure button is clickable */
+          aria-label="Close sidebar"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+        <h2 className="text-lg font-semibold mb-4 mt-10 md:mt-0">Categories</h2> 
         <ul>
           {Object.keys(groupingConfig).map(categoryName => (
             <li 
@@ -155,7 +205,7 @@ export default function BetaUIView() {
             >
               <span>{categoryDisplayNameMap[categoryName] || categoryName}</span>
               {hasNewItems(categoryName) && (
-                <span className="w-2.5 h-2.5 bg-blue-500 rounded-full ml-2 border-2 border-background"></span> 
+                <span className="w-2.5 h-2.5 bg-white rounded-full ml-2"></span> 
               )}
             </li>
           ))}
@@ -163,7 +213,8 @@ export default function BetaUIView() {
       </div>
 
       {/* Content Area */}
-      <div className="flex-1 p-6 overflow-y-auto">
+      {/* Adjusted margin for mobile when sidebar can be open */}
+      <div className={`flex-1 p-6 overflow-y-auto transition-all duration-300 ease-in-out rounded-r-lg md:rounded-l-none ${isSidebarOpen && window.innerWidth < 768 ? 'ml-0' : 'ml-0 md:ml-0'}`}>
         {selectedCategory ? (
           <>
             {loadingItems && <p className="text-center">Loading items...</p>}
@@ -175,9 +226,8 @@ export default function BetaUIView() {
                   <FeedCard
                     key={item.id}
                     update={item}
-                    // Pass item.id as lastSeenHighestId to ensure "New" badge on card doesn't show,
-                    // as newness is handled at the category level in Beta UI.
-                    lastSeenHighestId={item.id} 
+                    // Pass the actual last seen ID for this item's type
+                    lastSeenHighestId={lastSeenIdsPerType[item.type] || 0} 
                     aiSummariesEnabled={aiSummariesEnabled}
                   />
                 ))}
