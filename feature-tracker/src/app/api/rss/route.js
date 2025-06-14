@@ -33,7 +33,7 @@ export async function GET(request) {
 
     if (groupTypeParam) {
       try {
-        const groupsFilePath = path.join(process.cwd(), 'src', 'config', 'rssFeedGroups.json');
+        const groupsFilePath = path.join(process.cwd(), 'src', 'config', 'grouping.json');
         const groupsFileContent = await fs.readFile(groupsFilePath, 'utf-8');
         const rssFeedGroups = JSON.parse(groupsFileContent);
         
