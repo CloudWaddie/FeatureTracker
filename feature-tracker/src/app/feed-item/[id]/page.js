@@ -50,15 +50,6 @@ function FeedItemDetailContent() {
 
   return (
     <div className="container mx-auto p-4">
-      {betaUiFeatureEnabled && (
-        <Tabs value={activeUITab} onValueChange={setActiveUITab} className="mb-4">
-          <TabsList>
-            <TabsTrigger value="standard">Feed Item Detail</TabsTrigger>
-            <TabsTrigger value="beta">Beta UI</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      )}
-
       {(!betaUiFeatureEnabled || activeUITab === "standard") && (
         <div className="flex flex-col items-center"> {/* Centering container for the card */}
           <div className="w-full md:w-3/4 lg:w-2/3 max-w-4xl"> {/* Responsive width container */}
